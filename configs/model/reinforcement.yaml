@@ -1,0 +1,38 @@
+# ═══════════════════════════════════════════════════════════
+# 强化学习 (PPO) 训练配置
+# ═══════════════════════════════════════════════════════════
+#
+# 模型架构来自 configs/model/multimodal.yaml（与 BC 共用）
+
+# ── 动作分布 ─────────────────────────────────────────────
+distribution_cfg:
+  class_name: GaussianDistribution
+  init_std: 0.2
+  std_type: scalar          # scalar | vector
+
+# ── PPO 算法 ─────────────────────────────────────────────
+algorithm:
+  value_loss_coef: 1.0
+  use_clipped_value_loss: true
+  clip_param: 0.2
+  entropy_coef: 0.005
+  num_learning_epochs: 5
+  num_mini_batches: 4
+  learning_rate: 0.001
+  schedule: adaptive        # adaptive | fixed
+  gamma: 0.99
+  lam: 0.95
+  desired_kl: 0.01
+  max_grad_norm: 1.0
+
+# ── Critic 网络（标准 MLP，不使用多模态编码） ─────────────
+critic:
+  class_name: MLPModel
+  hidden_dims: [512, 256, 128]
+  activation: elu
+  obs_normalization: true
+
+# ── Runner 配置 ──────────────────────────────────────────
+runner:
+  save_interval: 50
+  num_steps_per_env: 24

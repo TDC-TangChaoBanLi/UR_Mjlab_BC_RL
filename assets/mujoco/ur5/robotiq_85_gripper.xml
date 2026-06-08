@@ -1,0 +1,180 @@
+<!--
+  Robotiq 85 二指夹爪 MJCF
+  包含 1 个驱动关节: robotiq_85_left_knuckle_joint (position actuator)
+  右侧通过 tendon coupling 联动
+-->
+<mujoco model="robotiq_85_gripper">
+  <compiler angle="radian" meshdir="meshes" autolimits="true"/>
+
+  <default>
+    <default class="gripper">
+      <default class="visual">
+        <geom contype="0" conaffinity="0" group="2"/>
+      </default>
+      <default class="collision">
+        <geom contype="1" conaffinity="1" group="3" condim="4"/>
+      </default>
+    </default>
+  </default>
+
+  <asset>
+    <!-- Shelf / adapter -->
+    <mesh name="MESH_RealSense_D435_Shelf_d359ca29" file="RealSense_D435_Shelf_d359ca29.STL"/>
+    <mesh name="MESH_ur_to_robotiq_adapter_c1f8affd" file="ur_to_robotiq_adapter_c1f8affd.stl"/>
+    <mesh name="MESH_ur_to_robotiq_adapter_e07b68cf_0" file="ur_to_robotiq_adapter_e07b68cf_0.obj"/>
+    <mesh name="MESH_ur_to_robotiq_adapter_e07b68cf_1" file="ur_to_robotiq_adapter_e07b68cf_1.obj"/>
+    <!-- Base -->
+    <mesh name="MESH_robotiq_base_e14b1363" file="robotiq_base_e14b1363.stl"/>
+    <mesh name="MESH_robotiq_base_ba4c22e7_0" file="robotiq_base_ba4c22e7_0.obj"/>
+    <mesh name="MESH_robotiq_base_ba4c22e7_1" file="robotiq_base_ba4c22e7_1.obj"/>
+    <!-- Left finger -->
+    <mesh name="MESH_left_knuckle_51d3a21e" file="left_knuckle_51d3a21e.stl"/>
+    <mesh name="MESH_left_knuckle_ac6d7519_0" file="left_knuckle_ac6d7519_0.obj"/>
+    <mesh name="MESH_left_finger_1b48fede" file="left_finger_1b48fede.stl"/>
+    <mesh name="MESH_left_finger_e1ea88f9_0" file="left_finger_e1ea88f9_0.obj"/>
+    <mesh name="MESH_left_finger_e1ea88f9_1" file="left_finger_e1ea88f9_1.obj"/>
+    <mesh name="MESH_left_finger_tip_c9609174" file="left_finger_tip_c9609174.stl"/>
+    <mesh name="MESH_left_finger_tip_4c918411_0" file="left_finger_tip_4c918411_0.obj"/>
+    <mesh name="MESH_left_finger_tip_4c918411_1" file="left_finger_tip_4c918411_1.obj"/>
+    <!-- Right finger -->
+    <mesh name="MESH_right_knuckle_8dc62fad" file="right_knuckle_8dc62fad.stl"/>
+    <mesh name="MESH_right_knuckle_922d025b_0" file="right_knuckle_922d025b_0.obj"/>
+    <mesh name="MESH_right_finger_df3e86a5" file="right_finger_df3e86a5.stl"/>
+    <mesh name="MESH_right_finger_12094dbb_0" file="right_finger_12094dbb_0.obj"/>
+    <mesh name="MESH_right_finger_12094dbb_1" file="right_finger_12094dbb_1.obj"/>
+    <mesh name="MESH_right_finger_tip_8abbbc6d" file="right_finger_tip_8abbbc6d.stl"/>
+    <mesh name="MESH_right_finger_tip_5aafdc4f_0" file="right_finger_tip_5aafdc4f_0.obj"/>
+    <mesh name="MESH_right_finger_tip_5aafdc4f_1" file="right_finger_tip_5aafdc4f_1.obj"/>
+    <!-- Inner knuckles -->
+    <mesh name="MESH_left_inner_knuckle_11ecd5a1" file="left_inner_knuckle_11ecd5a1.stl"/>
+    <mesh name="MESH_left_inner_knuckle_d6e20ced_0" file="left_inner_knuckle_d6e20ced_0.obj"/>
+    <mesh name="MESH_left_inner_knuckle_d6e20ced_1" file="left_inner_knuckle_d6e20ced_1.obj"/>
+    <mesh name="MESH_right_inner_knuckle_2c3a72a4" file="right_inner_knuckle_2c3a72a4.stl"/>
+    <mesh name="MESH_right_inner_knuckle_8d05a49d_0" file="right_inner_knuckle_8d05a49d_0.obj"/>
+    <mesh name="MESH_right_inner_knuckle_8d05a49d_1" file="right_inner_knuckle_8d05a49d_1.obj"/>
+  </asset>
+
+  <worldbody>
+    <body name="realsense_shelf" pos="0 0 0" quat="6.123233995736766e-17 0 0 1">
+      <inertial mass="0.038" diaginertia="6.673e-05 8.5e-06 7.517e-05" pos="0.0 0.044 0.0015" quat="1 0 0 0"/>
+      <geom class="collision" name="COLLISION_realsense_shelf_0" type="mesh" mesh="MESH_RealSense_D435_Shelf_d359ca29" pos="0 0 0" quat="1 0 0 0"/>
+      <geom class="visual" name="VISUAL_realsense_shelf_0" type="mesh" mesh="MESH_RealSense_D435_Shelf_d359ca29" rgba="0.7 0.7 0.7 1" pos="0 0 0" quat="1 0 0 0"/>
+
+      <body name="realsense_shelf_child_side" pos="0 0 0.006" quat="1 0 0 0">
+        <body name="robotiq_ur_to_robotiq_link" pos="0 0 0" quat="1 0 0 0">
+          <inertial mass="0.01" diaginertia="4.4e-05 2.7e-05 2.7e-05" pos="0 0 0" quat="1 0 0 0"/>
+          <geom class="collision" name="COLLISION_robotiq_ur_to_robotiq_link_0" type="mesh" mesh="MESH_ur_to_robotiq_adapter_c1f8affd" pos="0 0 0" quat="1 0 0 0"/>
+          <geom class="visual" name="VISUAL_robotiq_ur_to_robotiq_link_0" type="mesh" mesh="MESH_ur_to_robotiq_adapter_e07b68cf_0" rgba="0.039 0.039 0.039 1" pos="0 0 0" quat="1 0 0 0"/>
+          <geom class="visual" name="VISUAL_robotiq_ur_to_robotiq_link_1" type="mesh" mesh="MESH_ur_to_robotiq_adapter_e07b68cf_1" rgba="0.298 0.298 0.298 1" pos="0 0 0" quat="1 0 0 0"/>
+
+          <body name="robotiq_ur_to_g2f85_child_side" pos="0 0 0.011" quat="1 0 0 0">
+            <body name="robotiq_85_base_link" pos="0 0 0" quat="1 0 0 0">
+              <inertial mass="0.66320197" diaginertia="0.00039462722067250294 0.0005161781480017798 0.0005880226313257172" pos="0.0 2.274e-05 0.03232288" quat="0.5005192813628906 -0.49947997687615325 0.49968467889977636 -0.5003153239274212"/>
+              <geom class="collision" name="COLLISION_robotiq_85_base_link_0" type="mesh" mesh="MESH_robotiq_base_e14b1363" pos="0 0 0" quat="1 0 0 0"/>
+              <geom class="visual" name="VISUAL_robotiq_85_base_link_0" type="mesh" mesh="MESH_robotiq_base_ba4c22e7_0" rgba="0.031 0.031 0.031 1" pos="0 0 0" quat="1 0 0 0"/>
+              <geom class="visual" name="VISUAL_robotiq_85_base_link_1" type="mesh" mesh="MESH_robotiq_base_ba4c22e7_1" rgba="0.8 0.8 0.8 1" pos="0 0 0" quat="1 0 0 0"/>
+
+              <!-- Left finger chain -->
+              <body name="robotiq_85_left_knuckle_link" pos="0.03060114 0 0.05490452" quat="1 0 0 0">
+                <inertial mass="0.01384773208" diaginertia="3.4500845003981836e-07 2.238671549960182e-06 2.31944e-06" pos="0.01213197 0.0002 -0.00058647" quat="0.7067650957173783 -0.706765095717382 -0.02197952400764002 0.021979524007640125"/>
+                <joint name="robotiq_85_left_knuckle_joint" type="hinge" axis="0 -1 0" range="0.0 0.8"/>
+                <geom class="collision" name="COLLISION_robotiq_85_left_knuckle_link_0" type="mesh" mesh="MESH_left_knuckle_51d3a21e" pos="0 0 0" quat="1 0 0 0"/>
+                <geom class="visual" name="VISUAL_robotiq_85_left_knuckle_link_0" type="mesh" mesh="MESH_left_knuckle_ac6d7519_0" rgba="0.8 0.8 0.8 1" pos="0 0 0" quat="1 0 0 0"/>
+
+                <body name="robotiq_85_left_finger_link" pos="0.03152616 0 -0.00376347" quat="1 0 0 0">
+                  <inertial mass="0.04260376752" diaginertia="4.6822750126340444e-06 1.183208e-05 1.4372364987365957e-05" pos="0.00346899 -0.00079447 0.01867121" quat="0.620317559743575 0 -0.7843507666049523 0"/>
+                  <geom class="collision" name="COLLISION_robotiq_85_left_finger_link_0" type="mesh" mesh="MESH_left_finger_1b48fede" pos="0 0 0" quat="1 0 0 0"/>
+                  <geom class="visual" name="VISUAL_robotiq_85_left_finger_link_0" type="mesh" mesh="MESH_left_finger_e1ea88f9_0" rgba="0.8 0.8 0.8 1" pos="0 0 0" quat="1 0 0 0"/>
+                  <geom class="visual" name="VISUAL_robotiq_85_left_finger_link_1" type="mesh" mesh="MESH_left_finger_e1ea88f9_1" rgba="0.031 0.031 0.031 1" pos="0 0 0" quat="1 0 0 0"/>
+
+                  <body name="robotiq_85_left_finger_tip_link" pos="0.00563134 0 0.04718515" quat="1 0 0 0">
+                    <inertial mass="0.04268588744" diaginertia="2.6440466428387786e-06 1.197888e-05 1.206531335716122e-05" pos="-0.01456706 -0.0008 0.01649701" quat="0.0 0.5431343521286145 0.0 0.8396458036206875"/>
+                    <joint name="robotiq_85_left_finger_tip_joint" type="hinge" axis="0 -1 0"/>
+                    <geom class="collision" name="COLLISION_robotiq_85_left_finger_tip_link_0" type="mesh" mesh="MESH_left_finger_tip_c9609174" pos="0 0 0" quat="1 0 0 0"
+                      margin="0.001" solmix="10" solref="-3000 -500" solimp="0.95 0.99 0.001 0.5 2" priority="10" friction="5 5 0.02"/>
+                    <geom class="visual" name="VISUAL_robotiq_85_left_finger_tip_link_0" type="mesh" mesh="MESH_left_finger_tip_4c918411_0" rgba="0.031 0.031 0.031 1" pos="0 0 0" quat="1 0 0 0"/>
+                    <geom class="visual" name="VISUAL_robotiq_85_left_finger_tip_link_1" type="mesh" mesh="MESH_left_finger_tip_4c918411_1" rgba="0.8 0.8 0.8 1" pos="0 0 0" quat="1 0 0 0"/>
+                  </body>
+                </body>
+              </body>
+
+              <!-- Right finger chain -->
+              <body name="robotiq_85_right_knuckle_link" pos="-0.03060114 0 0.05490452" quat="1 0 0 0">
+                <inertial mass="0.01384773208" diaginertia="3.4500845003981836e-07 2.238671549960182e-06 2.31944e-06" pos="-0.01213197 0.0002 -0.00058647" quat="0.7067650957173783 0.706765095717382 0.02197952400764002 0.021979524007640125"/>
+                <joint name="robotiq_85_right_knuckle_joint" type="hinge" axis="0 -1 0" range="-0.8 0.0"/>
+                <geom class="collision" name="COLLISION_robotiq_85_right_knuckle_link_0" type="mesh" mesh="MESH_right_knuckle_8dc62fad" pos="0 0 0" quat="1 0 0 0"/>
+                <geom class="visual" name="VISUAL_robotiq_85_right_knuckle_link_0" type="mesh" mesh="MESH_right_knuckle_922d025b_0" rgba="0.8 0.8 0.8 1" pos="0 0 0" quat="1 0 0 0"/>
+
+                <body name="robotiq_85_right_finger_link" pos="-0.03152616 0 -0.00376347" quat="1 0 0 0">
+                  <inertial mass="0.04260376752" diaginertia="4.6822750126340444e-06 1.183208e-05 1.4372364987365957e-05" pos="-0.00346899 -5.53e-06 0.01867121" quat="0 0.620317559743575 0 0.7843507666049523"/>
+                  <geom class="collision" name="COLLISION_robotiq_85_right_finger_link_0" type="mesh" mesh="MESH_right_finger_df3e86a5" pos="0 0 0" quat="1 0 0 0"/>
+                  <geom class="visual" name="VISUAL_robotiq_85_right_finger_link_0" type="mesh" mesh="MESH_right_finger_12094dbb_0" rgba="0.8 0.8 0.8 1" pos="0 0 0" quat="1 0 0 0"/>
+                  <geom class="visual" name="VISUAL_robotiq_85_right_finger_link_1" type="mesh" mesh="MESH_right_finger_12094dbb_1" rgba="0.031 0.031 0.031 1" pos="0 0 0" quat="1 0 0 0"/>
+
+                  <body name="robotiq_85_right_finger_tip_link" pos="-0.00563134 0 0.04718515" quat="1 0 0 0">
+                    <inertial mass="0.04268588744" diaginertia="2.6440466428387786e-06 1.197888e-05 1.206531335716122e-05" pos="0.01456706 5e-05 0.01649701" quat="0.5431343521286145 0 -0.8396458036206876 0"/>
+                    <joint name="robotiq_85_right_finger_tip_joint" type="hinge" axis="0 -1 0"/>
+                    <geom class="collision" name="COLLISION_robotiq_85_right_finger_tip_link_0" type="mesh" mesh="MESH_right_finger_tip_8abbbc6d" pos="0 0 0" quat="1 0 0 0"
+                      margin="0.001" solmix="10" solref="-3000 -500" solimp="0.95 0.99 0.001 0.5 2" priority="10" friction="5 5 0.02"/>
+                    <geom class="visual" name="VISUAL_robotiq_85_right_finger_tip_link_0" type="mesh" mesh="MESH_right_finger_tip_5aafdc4f_0" rgba="0.031 0.031 0.031 1" pos="0 0 0" quat="1 0 0 0"/>
+                    <geom class="visual" name="VISUAL_robotiq_85_right_finger_tip_link_1" type="mesh" mesh="MESH_right_finger_tip_5aafdc4f_1" rgba="0.8 0.8 0.8 1" pos="0 0 0" quat="1 0 0 0"/>
+                  </body>
+                </body>
+              </body>
+
+              <!-- Inner knuckles (passive) -->
+              <body name="robotiq_85_left_inner_knuckle_link" pos="0.0127 0 0.06142" quat="1 0 0 0">
+                <inertial mass="0.02969376448" diaginertia="4.887117939453948e-06 8.69056e-06 1.287568206054605e-05" pos="0.01897699 0.00015001 0.02247101" quat="0.42240861350400083 0 -0.9064055180975167 0"/>
+                <joint name="robotiq_85_left_inner_knuckle_joint" type="hinge" axis="0 -1 0"/>
+                <geom class="collision" name="COLLISION_robotiq_85_left_inner_knuckle_link_0" type="mesh" mesh="MESH_left_inner_knuckle_11ecd5a1" pos="0 0 0" quat="1 0 0 0"/>
+                <geom class="visual" name="VISUAL_robotiq_85_left_inner_knuckle_link_0" type="mesh" mesh="MESH_left_inner_knuckle_d6e20ced_0" rgba="0.031 0.031 0.031 1" pos="0 0 0" quat="1 0 0 0"/>
+                <geom class="visual" name="VISUAL_robotiq_85_left_inner_knuckle_link_1" type="mesh" mesh="MESH_left_inner_knuckle_d6e20ced_1" rgba="0.8 0.8 0.8 1" pos="0 0 0" quat="1 0 0 0"/>
+              </body>
+
+              <body name="robotiq_85_right_inner_knuckle_link" pos="-0.0127 0 0.06142" quat="1 0 0 0">
+                <inertial mass="0.02969376448" diaginertia="4.880756583548092e-06 8.69056e-06 1.288204341645191e-05" pos="-0.01926824 5.001e-05 0.02222178" quat="0 0.41391107378742875 0 0.9103173199473564"/>
+                <joint name="robotiq_85_right_inner_knuckle_joint" type="hinge" axis="0 -1 0"/>
+                <geom class="collision" name="COLLISION_robotiq_85_right_inner_knuckle_link_0" type="mesh" mesh="MESH_right_inner_knuckle_2c3a72a4" pos="0 0 0" quat="1 0 0 0"/>
+                <geom class="visual" name="VISUAL_robotiq_85_right_inner_knuckle_link_0" type="mesh" mesh="MESH_right_inner_knuckle_8d05a49d_0" rgba="0.031 0.031 0.031 1" pos="0 0 0" quat="1 0 0 0"/>
+                <geom class="visual" name="VISUAL_robotiq_85_right_inner_knuckle_link_1" type="mesh" mesh="MESH_right_inner_knuckle_8d05a49d_1" rgba="0.8 0.8 0.8 1" pos="0 0 0" quat="1 0 0 0"/>
+              </body>
+
+              <!-- TCP at fingertip center -->
+              <body name="_tcp" pos="0 0 0.12" quat="1 0 0 0">
+                <site name="_tcp"/>
+              </body>
+            </body>
+          </body>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+
+  <tendon>
+    <fixed name="robotiq_knuckle_tendon">
+      <joint joint="robotiq_85_left_knuckle_joint" coef="0.5"/>
+      <joint joint="robotiq_85_right_knuckle_joint" coef="-0.5"/>
+    </fixed>
+  </tendon>
+
+  <contact>
+    <exclude body1="robotiq_85_base_link" body2="robotiq_85_left_knuckle_link"/>
+    <exclude body1="robotiq_85_base_link" body2="robotiq_85_right_knuckle_link"/>
+    <exclude body1="robotiq_85_base_link" body2="robotiq_85_left_inner_knuckle_link"/>
+    <exclude body1="robotiq_85_base_link" body2="robotiq_85_right_inner_knuckle_link"/>
+    <exclude body1="robotiq_85_left_finger_link" body2="robotiq_85_left_finger_tip_link"/>
+    <exclude body1="robotiq_85_right_finger_link" body2="robotiq_85_right_finger_tip_link"/>
+    <exclude body1="robotiq_85_left_finger_tip_link" body2="robotiq_85_left_inner_knuckle_link"/>
+    <exclude body1="robotiq_85_right_finger_tip_link" body2="robotiq_85_right_inner_knuckle_link"/>
+  </contact>
+
+  <actuator>
+    <position name="robotiq_85_left_knuckle_joint_ACTUATOR" joint="robotiq_85_left_knuckle_joint" kp="10" dampratio="1.0" ctrlrange="0.0 0.7929"/>
+  </actuator>
+
+  <equality>
+    <connect anchor="-0.018 0 0.0065" body1="robotiq_85_left_finger_tip_link" body2="robotiq_85_left_inner_knuckle_link" solimp="0.95 0.99 0.001" solref="0.005 1"/>
+    <connect anchor="0.018 0 0.0065" body1="robotiq_85_right_finger_tip_link" body2="robotiq_85_right_inner_knuckle_link" solimp="0.95 0.99 0.001" solref="0.005 1"/>
+    <joint joint1="robotiq_85_left_knuckle_joint" joint2="robotiq_85_right_knuckle_joint" polycoef="0.0 -1.0 0.0 0.0 0.0"/>
+  </equality>
+</mujoco>

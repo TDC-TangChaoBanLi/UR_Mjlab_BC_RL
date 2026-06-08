@@ -1,0 +1,32 @@
+# ── 仿真 / 控制 / 相机 频率 ──
+sim:
+  physics_dt: 0.001        # 物理仿真步长 (1000 Hz)
+  policy_dt: 0.01          # 策略执行间隔 (100 Hz)
+  camera_dt: 0.033333      # 相机帧间隔 (≈30 Hz)
+
+# ── 机器人 ──
+robot:
+  arm_joints:
+    - ur_shoulder_pan_joint
+    - ur_shoulder_lift_joint
+    - ur_elbow_joint
+    - ur_wrist_1_joint
+    - ur_wrist_2_joint
+    - ur_wrist_3_joint
+  gripper_joints:
+    - robotiq_85_left_knuckle_joint
+  ee_site: "_tcp"
+  default_qpos: [0.0, -1.32, 1.32, -1.57, -1.57, 0.0]
+
+# ── 相机 ──
+camera:
+  name: "realsense_link_CAMERA"
+  image_size: [240, 320]     # 相机图像尺寸 (H, W)
+
+# ── 场景目录 ──
+scene_dir: "assets/mujoco/scenes"
+
+# ── 采集参数 ──
+collection:
+  max_steps: 30000          # 每 episode 最大 physics 步数
+  max_attempts: 3          # 每 episode 最大重试次数

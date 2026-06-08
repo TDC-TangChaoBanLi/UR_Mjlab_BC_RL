@@ -1,0 +1,175 @@
+<!--
+  UR5e 完整模型: 机械臂 + Robotiq 85 夹爪 + RealSense D435 手眼相机
+  所有组件在同一文件中，用于 scene 的 <include>
+  
+  关节:
+    ur_shoulder_pan_joint, ur_shoulder_lift_joint, ur_elbow_joint,
+    ur_wrist_1_joint, ur_wrist_2_joint, ur_wrist_3_joint (6个arm关节)
+    robotiq_85_left_knuckle_joint (主动夹爪关节)
+  
+  Actuator 全部使用 position 模式，支持关节位置增量控制
+-->  <!-- ========== Assets: 所有 mesh ========== -->
+  <asset>
+    <!-- Base -->
+    <mesh name="MESH_base_bd1b2dd6" file="base_bd1b2dd6.stl"/>
+    <mesh name="MESH_base_b81001a2_0" file="base_b81001a2_0.obj"/>
+    <mesh name="MESH_base_b81001a2_1" file="base_b81001a2_1.obj"/>
+    <!-- Shoulder -->
+    <mesh name="MESH_shoulder_661339ad" file="shoulder_661339ad.stl"/>
+    <mesh name="MESH_shoulder_0fe2d913_0" file="shoulder_0fe2d913_0.obj"/>
+    <mesh name="MESH_shoulder_0fe2d913_1" file="shoulder_0fe2d913_1.obj"/>
+    <mesh name="MESH_shoulder_0fe2d913_2" file="shoulder_0fe2d913_2.obj"/>
+    <!-- Upper arm -->
+    <mesh name="MESH_upperarm_d0455716" file="upperarm_d0455716.stl"/>
+    <mesh name="MESH_upperarm_12b51e98_0" file="upperarm_12b51e98_0.obj"/>
+    <mesh name="MESH_upperarm_12b51e98_1" file="upperarm_12b51e98_1.obj"/>
+    <mesh name="MESH_upperarm_12b51e98_2" file="upperarm_12b51e98_2.obj"/>
+    <mesh name="MESH_upperarm_12b51e98_3" file="upperarm_12b51e98_3.obj"/>
+    <mesh name="MESH_upperarm_12b51e98_4" file="upperarm_12b51e98_4.obj"/>
+    <mesh name="MESH_upperarm_12b51e98_5" file="upperarm_12b51e98_5.obj"/>
+    <mesh name="MESH_upperarm_12b51e98_6" file="upperarm_12b51e98_6.obj"/>
+    <mesh name="MESH_upperarm_12b51e98_7" file="upperarm_12b51e98_7.obj"/>
+    <!-- Forearm -->
+    <mesh name="MESH_forearm_98bdcf8e" file="forearm_98bdcf8e.stl"/>
+    <mesh name="MESH_forearm_861ccd15_0" file="forearm_861ccd15_0.obj"/>
+    <mesh name="MESH_forearm_861ccd15_1" file="forearm_861ccd15_1.obj"/>
+    <mesh name="MESH_forearm_861ccd15_2" file="forearm_861ccd15_2.obj"/>
+    <mesh name="MESH_forearm_861ccd15_3" file="forearm_861ccd15_3.obj"/>
+    <mesh name="MESH_forearm_861ccd15_4" file="forearm_861ccd15_4.obj"/>
+    <mesh name="MESH_forearm_861ccd15_5" file="forearm_861ccd15_5.obj"/>
+    <mesh name="MESH_forearm_861ccd15_6" file="forearm_861ccd15_6.obj"/>
+    <!-- Wrist 1 -->
+    <mesh name="MESH_wrist1_2df87b9f" file="wrist1_2df87b9f.stl"/>
+    <mesh name="MESH_wrist1_1e3ee180_0" file="wrist1_1e3ee180_0.obj"/>
+    <mesh name="MESH_wrist1_1e3ee180_1" file="wrist1_1e3ee180_1.obj"/>
+    <mesh name="MESH_wrist1_1e3ee180_2" file="wrist1_1e3ee180_2.obj"/>
+    <!-- Wrist 2 -->
+    <mesh name="MESH_wrist2_e6869549" file="wrist2_e6869549.stl"/>
+    <mesh name="MESH_wrist2_bde41993_0" file="wrist2_bde41993_0.obj"/>
+    <mesh name="MESH_wrist2_bde41993_1" file="wrist2_bde41993_1.obj"/>
+    <mesh name="MESH_wrist2_bde41993_2" file="wrist2_bde41993_2.obj"/>
+    <!-- Wrist 3 -->
+    <mesh name="MESH_wrist3_21abe53b" file="wrist3_21abe53b.stl"/>
+    <mesh name="MESH_wrist3_8e7adc5c_0" file="wrist3_8e7adc5c_0.obj"/>
+    <!-- Shelf / adapter -->
+    <mesh name="MESH_RealSense_D435_Shelf_d359ca29" file="RealSense_D435_Shelf_d359ca29.STL"/>
+    <mesh name="MESH_ur_to_robotiq_adapter_c1f8affd" file="ur_to_robotiq_adapter_c1f8affd.stl"/>
+    <mesh name="MESH_ur_to_robotiq_adapter_e07b68cf_0" file="ur_to_robotiq_adapter_e07b68cf_0.obj"/>
+    <mesh name="MESH_ur_to_robotiq_adapter_e07b68cf_1" file="ur_to_robotiq_adapter_e07b68cf_1.obj"/>
+    <!-- Gripper base -->
+    <mesh name="MESH_robotiq_base_e14b1363" file="robotiq_base_e14b1363.stl"/>
+    <mesh name="MESH_robotiq_base_ba4c22e7_0" file="robotiq_base_ba4c22e7_0.obj"/>
+    <mesh name="MESH_robotiq_base_ba4c22e7_1" file="robotiq_base_ba4c22e7_1.obj"/>
+    <!-- Left finger -->
+    <mesh name="MESH_left_knuckle_51d3a21e" file="left_knuckle_51d3a21e.stl"/>
+    <mesh name="MESH_left_knuckle_ac6d7519_0" file="left_knuckle_ac6d7519_0.obj"/>
+    <mesh name="MESH_left_finger_1b48fede" file="left_finger_1b48fede.stl"/>
+    <mesh name="MESH_left_finger_e1ea88f9_0" file="left_finger_e1ea88f9_0.obj"/>
+    <mesh name="MESH_left_finger_e1ea88f9_1" file="left_finger_e1ea88f9_1.obj"/>
+    <mesh name="MESH_left_finger_tip_c9609174" file="left_finger_tip_c9609174.stl"/>
+    <mesh name="MESH_left_finger_tip_4c918411_0" file="left_finger_tip_4c918411_0.obj"/>
+    <mesh name="MESH_left_finger_tip_4c918411_1" file="left_finger_tip_4c918411_1.obj"/>
+    <!-- Right finger -->
+    <mesh name="MESH_right_knuckle_8dc62fad" file="right_knuckle_8dc62fad.stl"/>
+    <mesh name="MESH_right_knuckle_922d025b_0" file="right_knuckle_922d025b_0.obj"/>
+    <mesh name="MESH_right_finger_df3e86a5" file="right_finger_df3e86a5.stl"/>
+    <mesh name="MESH_right_finger_12094dbb_0" file="right_finger_12094dbb_0.obj"/>
+    <mesh name="MESH_right_finger_12094dbb_1" file="right_finger_12094dbb_1.obj"/>
+    <mesh name="MESH_right_finger_tip_8abbbc6d" file="right_finger_tip_8abbbc6d.stl"/>
+    <mesh name="MESH_right_finger_tip_5aafdc4f_0" file="right_finger_tip_5aafdc4f_0.obj"/>
+    <mesh name="MESH_right_finger_tip_5aafdc4f_1" file="right_finger_tip_5aafdc4f_1.obj"/>
+    <!-- Inner knuckles -->
+    <mesh name="MESH_left_inner_knuckle_11ecd5a1" file="left_inner_knuckle_11ecd5a1.stl"/>
+    <mesh name="MESH_left_inner_knuckle_d6e20ced_0" file="left_inner_knuckle_d6e20ced_0.obj"/>
+    <mesh name="MESH_left_inner_knuckle_d6e20ced_1" file="left_inner_knuckle_d6e20ced_1.obj"/>
+    <mesh name="MESH_right_inner_knuckle_2c3a72a4" file="right_inner_knuckle_2c3a72a4.stl"/>
+    <mesh name="MESH_right_inner_knuckle_8d05a49d_0" file="right_inner_knuckle_8d05a49d_0.obj"/>
+    <mesh name="MESH_right_inner_knuckle_8d05a49d_1" file="right_inner_knuckle_8d05a49d_1.obj"/>
+    <!-- D435 camera -->
+    <mesh name="MESH_d435_6743a526_0"  file="d435_6743a526_0.obj"/>
+    <mesh name="MESH_d435_6743a526_1"  file="d435_6743a526_1.obj"/>
+    <mesh name="MESH_d435_6743a526_2"  file="d435_6743a526_2.obj"/>
+    <mesh name="MESH_d435_6743a526_3"  file="d435_6743a526_3.obj"/>
+    <mesh name="MESH_d435_6743a526_4"  file="d435_6743a526_4.obj"/>
+    <mesh name="MESH_d435_6743a526_5"  file="d435_6743a526_5.obj"/>
+    <mesh name="MESH_d435_6743a526_6"  file="d435_6743a526_6.obj"/>
+    <mesh name="MESH_d435_6743a526_7"  file="d435_6743a526_7.obj"/>
+    <mesh name="MESH_d435_6743a526_8"  file="d435_6743a526_8.obj"/>
+    <mesh name="MESH_d435_6743a526_9"  file="d435_6743a526_9.obj"/>
+    <mesh name="MESH_d435_6743a526_10" file="d435_6743a526_10.obj"/>
+    <mesh name="MESH_d435_6743a526_11" file="d435_6743a526_11.obj"/>
+    <mesh name="MESH_d435_6743a526_12" file="d435_6743a526_12.obj"/>
+    <mesh name="MESH_d435_6743a526_13" file="d435_6743a526_13.obj"/>
+    <mesh name="MESH_d435_6743a526_14" file="d435_6743a526_14.obj"/>
+    <mesh name="MESH_d435_6743a526_15" file="d435_6743a526_15.obj"/>
+    <mesh name="MESH_d435_6743a526_16" file="d435_6743a526_16.obj"/>
+    <mesh name="MESH_d435_6743a526_17" file="d435_6743a526_17.obj"/>
+  </asset>
+
+  <!-- ========== Defaults ========== -->
+  <default>
+    <default class="visual">
+      <geom contype="0" conaffinity="0" group="2"/>
+    </default>
+    <default class="collision">
+      <geom contype="1" conaffinity="1" group="3" condim="4"/>
+    </default>
+  </default>
+
+  <!-- ========== Worldbody: 完整机器人 ========== -->
+<!-- ========== Tendons ========== -->
+  <tendon>
+    <fixed name="robotiq_knuckle_tendon">
+      <joint joint="robotiq_85_left_knuckle_joint" coef="0.5"/>
+      <joint joint="robotiq_85_right_knuckle_joint" coef="-0.5"/>
+    </fixed>
+  </tendon>
+
+  <!-- ========== Contact exclusions ========== -->
+  <contact>
+    <exclude body1="ur_base_link_inertia" body2="ur_shoulder_link"/>
+    <exclude body1="ur_shoulder_link" body2="ur_upper_arm_link"/>
+    <exclude body1="ur_upper_arm_link" body2="ur_forearm_link"/>
+    <exclude body1="ur_forearm_link" body2="ur_wrist_1_link"/>
+    <exclude body1="ur_wrist_1_link" body2="ur_wrist_2_link"/>
+    <exclude body1="ur_wrist_2_link" body2="ur_wrist_3_link"/>
+    <exclude body1="robotiq_85_base_link" body2="robotiq_85_left_knuckle_link"/>
+    <exclude body1="robotiq_85_base_link" body2="robotiq_85_right_knuckle_link"/>
+    <exclude body1="robotiq_85_base_link" body2="robotiq_85_left_inner_knuckle_link"/>
+    <exclude body1="robotiq_85_base_link" body2="robotiq_85_right_inner_knuckle_link"/>
+    <exclude body1="robotiq_85_left_finger_link" body2="robotiq_85_left_finger_tip_link"/>
+    <exclude body1="robotiq_85_right_finger_link" body2="robotiq_85_right_finger_tip_link"/>
+    <exclude body1="robotiq_85_left_finger_tip_link" body2="robotiq_85_left_inner_knuckle_link"/>
+    <exclude body1="robotiq_85_right_finger_tip_link" body2="robotiq_85_right_inner_knuckle_link"/>
+  </contact>
+
+  <!-- ========== Actuators (全 position 模式) ========== -->
+  <actuator>
+    <!-- Arm joints -->
+    <position name="ur_shoulder_pan_joint_ACTUATOR"  joint="ur_shoulder_pan_joint"  kp="2000" dampratio="1.0" ctrlrange="-6.2832 6.2832"/>
+    <position name="ur_shoulder_lift_joint_ACTUATOR"  joint="ur_shoulder_lift_joint"  kp="2000" dampratio="1.0" ctrlrange="-6.2832 6.2832"/>
+    <position name="ur_elbow_joint_ACTUATOR"           joint="ur_elbow_joint"         kp="2000" dampratio="1.0" ctrlrange="-3.1416 3.1416"/>
+    <position name="ur_wrist_1_joint_ACTUATOR"          joint="ur_wrist_1_joint"        kp="500"  dampratio="1.0" ctrlrange="-6.2832 6.2832"/>
+    <position name="ur_wrist_2_joint_ACTUATOR"          joint="ur_wrist_2_joint"        kp="500"  dampratio="1.0" ctrlrange="-6.2832 6.2832"/>
+    <position name="ur_wrist_3_joint_ACTUATOR"          joint="ur_wrist_3_joint"        kp="500"  dampratio="1.0" ctrlrange="-6.2832 6.2832"/>
+    <!-- Gripper joint -->
+    <position name="robotiq_85_left_knuckle_joint_ACTUATOR" joint="robotiq_85_left_knuckle_joint" kp="10" dampratio="1.0" ctrlrange="0.0 0.7929"/>
+  </actuator>
+
+  <!-- ========== Equality constraints ========== -->
+  <equality>
+    <connect anchor="-0.018 0 0.0065" body1="robotiq_85_left_finger_tip_link" body2="robotiq_85_left_inner_knuckle_link" solimp="0.95 0.99 0.001" solref="0.005 1"/>
+    <connect anchor="0.018 0 0.0065" body1="robotiq_85_right_finger_tip_link" body2="robotiq_85_right_inner_knuckle_link" solimp="0.95 0.99 0.001" solref="0.005 1"/>
+    <joint joint1="robotiq_85_left_knuckle_joint" joint2="robotiq_85_right_knuckle_joint" polycoef="0.0 -1.0 0.0 0.0 0.0"/>
+  </equality>
+
+  <!-- ========== Sensors ========== -->
+  <sensor>
+    <force name="ur_ft_frame_SENSOR_FORCE" site="_tcp"/>
+    <torque name="ur_ft_frame_SENSOR_TORQUE" site="_tcp"/>
+  </sensor>
+
+  <!-- ========== Keyframes ========== -->
+  <keyframe>
+    <key name="home" qpos="0.0 -1.5708 1.5708 -1.5708 -1.5708 0.0 0.0"/>
+  </keyframe>

@@ -1,0 +1,17 @@
+<!--
+  盘子 MJCF
+  浅圆柱体, 半径 0.08m, 高 0.01m, 蓝色
+-->
+<mujoco model="plate">
+  <compiler angle="radian"/>
+  <worldbody>
+    <body name="plate" pos="0 0 0.005">
+      <freejoint name="plate_joint"/>
+      <inertial mass="0.1" diaginertia="5.3e-5 5.3e-5 1.6e-5" pos="0 0 0"/>
+      <!-- 盘子主体: 扁平圆柱 -->
+      <geom name="plate_geom" type="cylinder" size="0.08 0.005" rgba="0.2 0.4 0.8 1" friction="0.8 0.6 0.3"/>
+      <!-- 盘子指示 site (正中心上方) -->
+      <site name="plate_center" pos="0 0 0.01" size="0.005"/>
+    </body>
+  </worldbody>
+</mujoco>

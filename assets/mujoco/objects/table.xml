@@ -1,0 +1,31 @@
+<!--
+  桌面 MJCF
+  简单平面 + 可选桌腿
+-->
+<mujoco model="table">
+  <compiler angle="radian"/>
+  <asset>
+    <texture name="table_tex" type="2d" builtin="checker" mark="edge" rgb1="0.3 0.25 0.2" rgb2="0.25 0.2 0.15" markrgb="0.5 0.5 0.5" width="300" height="300"/>
+    <material name="table_mat" texture="table_tex" texuniform="true" texrepeat="3 3" reflectance="0.1"/>
+    <texture name="skybox" type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0 0 0" width="512" height="3072"/>
+    <material name="floor_mat" rgba="0.4 0.4 0.45 1"/>
+  </asset>
+
+  <worldbody>
+    <light name="overhead" pos="0 0 2" dir="0 0 -1" directional="true" diffuse="0.8 0.8 0.8"/>
+    <light name="ambient" pos="0.5 0.5 1.5" directional="false" diffuse="0.3 0.3 0.3"/>
+
+    <!-- 桌面 -->
+    <body name="table_top" pos="0.45 0 0.0">
+      <geom name="table_surface" type="box" size="0.4 0.35 0.01" pos="0 0 0.01" material="table_mat" friction="0.8 0.6 0.3"/>
+      <!-- 桌腿 -->
+      <geom name="table_leg1" type="box" size="0.02 0.02 0.3" pos="-0.35 0.3 -0.3" rgba="0.3 0.25 0.2 1"/>
+      <geom name="table_leg2" type="box" size="0.02 0.02 0.3" pos="0.35 0.3 -0.3" rgba="0.3 0.25 0.2 1"/>
+      <geom name="table_leg3" type="box" size="0.02 0.02 0.3" pos="-0.35 -0.3 -0.3" rgba="0.3 0.25 0.2 1"/>
+      <geom name="table_leg4" type="box" size="0.02 0.02 0.3" pos="0.35 -0.3 -0.3" rgba="0.3 0.25 0.2 1"/>
+    </body>
+
+    <!-- 地面 -->
+    <geom name="floor" type="plane" size="0 0 0.05" material="floor_mat"/>
+  </worldbody>
+</mujoco>

@@ -1,0 +1,20 @@
+<!--
+  T 形物体 MJCF — Push-T 任务
+  由 3 个 box geom 组成 T 形: 横梁 + 竖梁, 绿色
+  整体尺寸: 横梁 0.08m x 0.02m, 竖梁 0.02m x 0.06m, 高 0.02m
+-->
+<mujoco model="t_shape">
+  <compiler angle="radian"/>
+  <worldbody>
+    <body name="t_shape" pos="0 0 0.01">
+      <freejoint name="t_shape_joint"/>
+      <inertial mass="0.08" diaginertia="5e-5 3e-5 8e-5" pos="0 0 0"/>
+      <!-- 竖梁 (沿 x 轴) -->
+      <geom name="t_stem" type="box" size="0.01 0.04 0.01" pos="0 0 0" rgba="0.2 0.75 0.3 1" friction="0.5 0.4 0.2"/>
+      <!-- 横梁 (沿 y 轴) -->
+      <geom name="t_cross" type="box" size="0.035 0.01 0.01" pos="0 0.04 0" rgba="0.2 0.75 0.3 1" friction="0.5 0.4 0.2"/>
+      <!-- T 中心 marker -->
+      <site name="t_center" pos="0 0 0" size="0.005"/>
+    </body>
+  </worldbody>
+</mujoco>

@@ -1,0 +1,32 @@
+[project]
+name = "ur-mjlab-bc-rl"
+version = "0.1.0"
+description = "UR5 Multi-task BC + PPO Reinforcement Learning with MuJoCo/MjLab"
+readme = "README.md"
+authors = [
+    { name = "TDC-TangChaoBanLi", email = "lihao_0630@qq.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "mjlab>=1.4.0",
+    "torch>=2.0.0",
+    "numpy>=1.24.0",
+    "scipy>=1.10.0",
+    "mink>=1.1.1",
+    "lerobot>=0.5.1",
+]
+
+[project.scripts]
+ur-mjlab-bc-rl = "ur_mjlab_bc_rl:main"
+
+[project.entry-points."mjlab.tasks"]
+ur_mjlab_bc_rl = "ur_mjlab_bc_rl"
+
+[build-system]
+requires = ["uv_build>=0.9.24,<0.10.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.3",
+]

@@ -1,0 +1,14 @@
+<!--
+  目标标记 MJCF — 用于 Push-T 显示目标位姿
+  半透明绿色指示器
+-->
+<mujoco model="goal_marker">
+  <compiler angle="radian"/>
+  <worldbody>
+    <body name="goal_marker" pos="0 0 0.015">
+      <freejoint name="goal_marker_joint"/>
+      <geom name="goal_base" type="cylinder" size="0.04 0.005" pos="0 0 -0.007" rgba="0.1 0.8 0.2 0.3"/>
+      <site name="goal_site" pos="0 0 0" size="0.01" rgba="0 1 0 0.5"/>
+    </body>
+  </worldbody>
+</mujoco>
