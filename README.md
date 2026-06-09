@@ -3,7 +3,7 @@
 
 UR5 机械臂多任务操作学习框架 —— 纯 MuJoCo 专家数据生成 + PyTorch 模仿学习预训练 + MjLab PPO 强化学习微调。
 
-## 支持的三个桌面操作任务
+## 支持的三个桌面操作任务 (目前仅支持 Pick-and-Place 任务的训练与评估)
 
 | 任务 ID | 任务名 | 描述 |
 |---------|--------|------|
@@ -61,10 +61,16 @@ UR_Mjlab_BC_RL/
 
 ## 环境准备
 
-```bash
-# 安装依赖
-uv sync
-```
+1. 安装 uv :
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+2. 安装依赖
+    ```bash
+    uv sync
+    ```
+
+> info: 当前的依赖源被锁定为 `https://pypi.tuna.tsinghua.edu.cn/simple`。
 
 核心依赖：`torch`, `numpy`, `scipy`, `mjlab`（含 MuJoCo, RSL-RL）。
 
@@ -82,14 +88,23 @@ python scripts/collect_keyboard_expert.py --task pick_place
 
 ### 2. BC 模仿学习预训练
 
-```bash
-python scripts/train_imitation.py \
-    --data outputs/datasets/expert/pick_place \
-    --task pick_place \
-    --epochs 100 --batch 64 --lr 1e-3
-```
+1. 简单的模仿学习：
+    ```bash
+    python scripts/train_imitation.py \
+        --data outputs/datasets/expert/pick_place/XXXXXX/ \
+        --task pick_place \
+        --epochs 100 --batch 64
+    ```
 
-### 3. PPO 强化学习微调
+2. Action Chunk with Transformer 模仿学习：
+    ```bash
+    python scripts/train_aloha_act.py \
+        --data outputs/datasets/expert/pick_place/XXXXXX/ \
+        --epochs 100 --batch 32
+    ```
+
+
+### 3. PPO 强化学习微调 (尚未测试)
 
 ```bash
 # 从 BC checkpoint 初始化
@@ -104,9 +119,9 @@ python scripts/train_ppo_finetune.py \
 ```bash
 # BC 策略评估
 python scripts/eval_policy.py --task pick_place \
-    --checkpoint outputs/checkpoints/pick_place/best_actor.pt --episodes 20
+    --checkpoint outputs/checkpoints/pick_place/XXXXXX/best_actor.pt --episodes 20
 
-# PPO 策略交互（通过 MjLab）
+# PPO 策略交互（通过 MjLab） (尚未测试)
 mjlab play UR5-PickPlace \
     --checkpoint-file logs/rsl_rl/pick_place/model_0.pt \
     --viewer viser --num-envs 1
@@ -118,14 +133,13 @@ mjlab play UR5-PickPlace \
 
 ```text
 RGBD 图像 [B,4,H,W] ──→ VisualEncoder (CNN/ViT) ──┐
-机器人状态 [B,27]    ──→ StateEncoder (MLP)      ──┼──→ Fusion ──→ PolicyMLP ──→ Action [B,7]
+机器人状态 [B,7]    ──→ StateEncoder (MLP)      ──┼──→ Fusion ──→ PolicyMLP ──→ Action [B,7]
 任务 ID [B]          ──→ TaskEncoder (Embedding)  ──┘       ↑
                                                         FiLM / Concat
 ```
 
 - 视觉编码器：CNN 或 ViT（config 可切换）
 - 融合方式：FiLM（特征调制）或 Concat（拼接）
-- 17.5M 参数（CNN 配置）
 
 ## 运行测试
 
