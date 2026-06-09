@@ -83,9 +83,9 @@ visual_encoder:
 # ── 状态编码器 ───────────────────────────────────────────
 state_encoder:
   type: mlp
-  input_dim: 14             # 由 ObservationCollector 决定
+  input_dim: 7             # 由 ObservationCollector 决定
   hidden_dims: [128]        # 隐藏层维度
-  output_dim: 512           # 最终特征向量维度
+  output_dim: 256           # 最终特征向量维度
   activation: silu          # 激活函数: silu, relu, elu
   dropout: 0.0              # dropout 概率
   output_norm: true         # LayerNorm 输出，与视觉编码器 scale 对齐
@@ -96,7 +96,7 @@ task_encoder:
   num_tasks: 3              # pick_place(0), push_t(1), peg_slot(2)
   embedding_dim: 64         # 任务嵌入维度
   hidden_dims: [128]         # 投影 MLP 隐藏层
-  output_dim: 512           # 最终特征向量维度
+  output_dim: 256           # 最终特征向量维度
 
 # ── 融合模块 ─────────────────────────────────────────────
 fusion:

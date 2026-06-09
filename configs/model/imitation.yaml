@@ -9,7 +9,7 @@ training:
   epochs: 100
   batch_size: 64
   learning_rate: 0.001
-  loss: mse                  # mse | l1 | huber
+  loss: l1                  # mse | l1 | huber
   val_split: 0.1
   save_every: 10
   seed: 42

@@ -46,7 +46,7 @@ class ObservationCollector:
         *,
         include_arm_vel: bool = False,
         include_ee_pose: bool = False,
-        include_last_action: bool = True,
+        include_last_action: bool = False,
         tcp_site_name: str = "_tcp",
         action_dim: int = 7,
     ) -> None:

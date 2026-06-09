@@ -125,7 +125,7 @@ def _collect_one_episode(task: dict[str, Any]) -> Episode | None:
             depth_range[1],
             include_arm_vel=False,
             include_ee_pose=False,
-            include_last_action=True,
+            include_last_action=False,
             action_dim=7,
         )
         ik_solver = MinkIK(mj_interface.model, mj_interface.get_qpos())
