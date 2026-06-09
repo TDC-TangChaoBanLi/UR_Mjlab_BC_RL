@@ -6,6 +6,7 @@ from typing import Any
 
 from .base import StateEncoderBase
 from .mlp_state import MLPStateEncoder
+from .linear_state import LinearStateEncoder
 
 
 def build_state_encoder(cfg: dict[str, Any]) -> StateEncoderBase:
@@ -32,8 +33,15 @@ def build_state_encoder(cfg: dict[str, Any]) -> StateEncoderBase:
             output_norm=cfg.get("output_norm", True),
         )
     
+    elif encoder_type == "linear":
+        return LinearStateEncoder(
+            input_dim=cfg.get("input_dim"),
+            output_dim=cfg.get("output_dim", 256),
+            output_norm=cfg.get("output_norm", True),
+        )
+    
     else:
         raise ValueError(
             f"Unknown state encoder type: {encoder_type}. "
-            f"Supported types: 'mlp'"
+            f"Supported types: 'mlp', 'linear'"
         )

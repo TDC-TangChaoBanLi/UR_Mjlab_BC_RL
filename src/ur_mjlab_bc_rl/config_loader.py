@@ -75,6 +75,11 @@ def load_reinforcement_config() -> dict:
     return _load("model/reinforcement.yaml")
 
 
+def load_aloha_act_model() -> dict:
+    """加载 ALOHA ACT 模型配置。"""
+    return _load("model/aloha_act.yaml")
+
+
 # ── 配置打印工具 ──────────────────────────────────────────
 
 

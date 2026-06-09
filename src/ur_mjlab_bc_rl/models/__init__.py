@@ -16,6 +16,7 @@ from .vision import build_visual_encoder as build_visual_encoder
 # 状态编码器
 from .state.base import StateEncoderBase as StateEncoderBase
 from .state.mlp_state import MLPStateEncoder as MLPStateEncoder
+from .state.linear_state import LinearStateEncoder as LinearStateEncoder
 from .state.encoder_factory import build_state_encoder as build_state_encoder
 
 # 任务编码器
@@ -36,6 +37,8 @@ from .distributions import GaussianDistribution as GaussianDistribution
 from .policy.multimodal_backbone import UR5MultimodalBackbone as UR5MultimodalBackbone
 from .policy.rsl_adapter import UR5RslActorModel as UR5RslActorModel
 from .policy.rsl_adapter import UR5MultimodalModelCfg as UR5MultimodalModelCfg
+from .policy.aloha_act_backbone import DETRVAE as DETRVAE
+from .policy.aloha_act_backbone import EnsembleBuffer as EnsembleBuffer
 
 # 模块
 from .modules import MLP as MLP
@@ -55,6 +58,7 @@ __all__ = [
     # 状态编码器
     "StateEncoderBase",
     "MLPStateEncoder",
+    "LinearStateEncoder",
     "build_state_encoder",
     # 任务编码器
     "TaskEncoderBase",
@@ -71,6 +75,8 @@ __all__ = [
     "UR5MultimodalBackbone",
     "UR5RslActorModel",
     "UR5MultimodalModelCfg",
+    "DETRVAE",
+    "EnsembleBuffer",
     # 模块
     "MLP",
 ]

@@ -1,0 +1,66 @@
+# ═══════════════════════════════════════════════════════════
+# ALOHA ACT 模型配置（仿 ACT 原始架构）
+# ═══════════════════════════════════════════════════════════
+#
+# 输入: camera (4, H, W) + state (7,)   [无 task_id, 无 last_action]
+# 输出: action chunk (K, 7)
+#
+# 架构: CVAE (Transformer encoder-decoder) + CNN visual encoder
+
+# ── 视觉编码器（tokens 模式：不配置 head，输出空间特征）──
+visual_encoder:
+  type: rgbd_cnn
+  in_channels: 4
+  image_size: [240, 320]
+
+  stem:
+    channels: 64
+    kernel: 7
+    stride: 2
+    pool: true
+    pool_kernel: 3
+    pool_stride: 2
+
+  stages:
+    - { channels: 64, blocks: 2, stride: 1 }
+    - { channels: 128, blocks: 2, stride: 2 }
+    - { channels: 256, blocks: 2, stride: 2 }
+
+  kernel_size: 3
+  activation: relu
+  norm: group_norm
+
+  # 不配置 head → tokens 模式，输出 [B, 256, 15, 20] → [B, 300, 256]
+
+# ── 状态编码器（ACT 原始：单层 Linear）──
+state_encoder:
+  type: linear             # linear | mlp
+  input_dim: 7             # arm_joint_pos(6) + gripper_pos(1)，不含 last_action
+  output_dim: 256          # = hidden_dim
+  output_norm: true
+
+# ── Transformer 参数 ──────────────────────────────────────
+hidden_dim: 256
+z_dim: 32                  # 潜变量维度
+enc_layers: 4              # CVAE encoder 层数
+dec_layers: 7              # CVAE decoder 层数
+nheads: 8
+dim_feedforward: 2048
+dropout: 0.1
+pre_norm: false
+
+# ── 动作参数 ──────────────────────────────────────────────
+action_dim: 7              # ee_delta(6) + gripper(1)
+chunk_size: 10             # K：一次预测 10 步动作
+kl_weight: 10.0            # KL divergence 权重 β
+
+# ── 训练参数（供 train_aloha_act.py 引用）────────────────
+training:
+  epochs: 200
+  batch_size: 32
+  learning_rate: 1e-4      # ACT 用 AdamW + 1e-4
+  lr_backbone: 1e-5        # backbone 小学习率
+  weight_decay: 1e-4
+  val_split: 0.1
+  save_every: 10
+  seed: 42
