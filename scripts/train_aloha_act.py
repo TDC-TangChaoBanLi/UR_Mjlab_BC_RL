@@ -48,96 +48,177 @@ def find_lerobot_root(data_path: Path) -> str:
 
 
 class ChunkedLeRobotDataset(Dataset):
-    """从 LeRobotDataset 构造 action chunk。
+    """
+    从 LeRobotDataset 构造 ACT action chunk。
 
     每个样本返回：
-        camera:      [4, H, W] RGBD 图像
-        state:       [state_dim] 仅取前 state_dim 维（默认 7，丢弃 last_action）
-        action_chunk: [K, action_dim] 连续 K 帧动作
-        is_pad:      [K] 标记哪些位置是 padding
+        camera:       [4, H, W] RGBD 图像，只读取当前帧
+        state:        [state_dim]
+        action_chunk: [K, action_dim]
+        is_pad:       [K]
+        task:         标量 task id
+
+    核心优化：
+        1. __getitem__ 中只调用一次 self._lds[idx]
+        2. action 和 state 提前缓存到 CPU 内存
+        3. action_chunk 通过 tensor slicing 构造，不再循环读取 self._lds[t]
     """
 
     def __init__(
         self,
         root: str | Path,
         repo_id: str,
-        chunk_size: int = 10,
+        chunk_size: int = 50,
         action_dim: int = 7,
         state_dim: int = 7,
         task_id: int = 0,
+        cache_low_dim: bool = True,
     ) -> None:
         from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
-        self._lds = LeRobotDataset(repo_id=repo_id, root=str(Path(root).expanduser().resolve()))
+        self._lds = LeRobotDataset(
+            repo_id=repo_id,
+            root=str(Path(root).expanduser().resolve()),
+        )
+
         self._len = int(self._lds.num_frames)
-        self.chunk_size = chunk_size
-        self.action_dim = action_dim
-        self.state_dim = state_dim
+        self.chunk_size = int(chunk_size)
+        self.action_dim = int(action_dim)
+        self.state_dim = int(state_dim)
         self.task_id = int(task_id)
 
-        # 获取 episode 边界（用于正确处理 chunk 边界）
         self._episode_boundaries = self._compute_episode_boundaries()
-        self._episode_end_map = self._build_episode_end_map()  # O(1) 查找
+        self._episode_end_map = self._build_episode_end_map()
+
+        self._arange_k = torch.arange(self.chunk_size)
+
+        if cache_low_dim:
+            self._actions = self._read_column_as_tensor("action")[:, : self.action_dim].contiguous()
+            self._states = self._read_column_as_tensor("observation.state")[:, : self.state_dim].contiguous()
+        else:
+            raise ValueError("建议保持 cache_low_dim=True，否则会回到低效读取模式。")
+
+    def _read_column_as_tensor(self, key: str) -> torch.Tensor:
+        """
+        从 LeRobotDataset 底层 HF dataset 中一次性读取低维列。
+        action/state 很小，通常可以直接放入内存。
+        """
+        if not hasattr(self._lds, "hf_dataset"):
+            raise AttributeError(
+                "当前 LeRobotDataset 没有 hf_dataset 属性。"
+                "需要根据你的 LeRobot 版本改成对应的底层 dataset 属性。"
+            )
+
+        col = self._lds.hf_dataset[key]
+
+        try:
+            arr = np.asarray(col, dtype=np.float32)
+        except Exception:
+            arr = np.stack(col).astype(np.float32)
+
+        if arr.ndim == 1:
+            arr = arr[:, None]
+
+        return torch.from_numpy(arr)
 
     def _compute_episode_boundaries(self) -> list[int]:
-        """计算每个 episode 的起始帧索引。"""
+        """
+        计算每个 episode 的起始帧索引。
+        返回形式：
+            [0, ep0_end, ep1_end, ..., num_frames]
+        """
         boundaries = [0]
+
         try:
             eps = self._lds.episodes
             if eps is not None:
                 for ep in eps:
-                    boundaries.append(boundaries[-1] + ep["length"])
-        except (AttributeError, KeyError):
+                    boundaries.append(boundaries[-1] + int(ep["length"]))
+        except (AttributeError, KeyError, TypeError):
             pass
+
         if len(boundaries) == 1:
             boundaries.append(self._len)
+
+        if boundaries[-1] != self._len:
+            boundaries[-1] = self._len
+
         return boundaries
 
     def _build_episode_end_map(self) -> list[int]:
-        """预计算每帧对应的 episode 结束帧索引。 O(N) 一次性构建。"""
-        end_map = [0] * self._len
+        """
+        对每一帧预计算它所在 episode 的结束帧。
+        这样 __getitem__ 中可以 O(1) 得到 ep_end。
+        """
+        end_map = [self._len] * self._len
+
         for i in range(len(self._episode_boundaries) - 1):
             start = self._episode_boundaries[i]
             end = self._episode_boundaries[i + 1]
-            for j in range(start, min(end, self._len)):
-                end_map[j] = end
+            start = max(0, min(start, self._len))
+            end = max(0, min(end, self._len))
+
+            if start < end:
+                end_map[start:end] = [end] * (end - start)
+
         return end_map
 
     def __len__(self) -> int:
         return self._len
 
     def __getitem__(self, idx: int) -> dict[str, torch.Tensor]:
+        # 只读取一次 LeRobotDataset。
+        # 这里主要是为了拿当前帧图像。
         f = self._lds[idx]
 
-        # 图像
-        rgb = f["observation.images.rgb"].float()
-        depth = f["observation.images.depth"].float()
-        if depth.ndim == 3:
+        rgb = f["observation.images.rgb"]
+        depth = f["observation.images.depth"]
+
+        # rgb: [3, H, W]
+        if rgb.dtype == torch.uint8:
+            rgb = rgb.float().div_(255.0)
+        else:
+            rgb = rgb.to(torch.float32)
+
+        # depth: 可能是 [H, W]、[1, H, W] 或 [C, H, W]
+        if depth.ndim == 2:
+            depth = depth.unsqueeze(0)
+        elif depth.ndim == 3:
             depth = depth[:1]
-        camera = torch.cat([rgb, depth], dim=0)  # [4, H, W]
+        else:
+            raise ValueError(f"Unexpected depth shape: {depth.shape}")
 
-        # 状态：仅取前 state_dim 维（丢弃 last_action）
-        full_state = f["observation.state"].float()  # [14]
-        state = full_state[:self.state_dim]           # [7]
+        if depth.dtype == torch.uint8:
+            depth = depth.float().div_(255.0)
+        else:
+            depth = depth.to(torch.float32)
 
-        # Action chunk — O(1) episode 边界查找
-        action_chunk = torch.zeros(self.chunk_size, self.action_dim)
-        is_pad = torch.ones(self.chunk_size, dtype=torch.bool)
-        ep_end = self._episode_end_map[idx] if idx < len(self._episode_end_map) else self._len
+        camera = torch.cat([rgb, depth], dim=0).contiguous()  # [4, H, W]
 
-        for k in range(self.chunk_size):
-            t = idx + k
-            if t < ep_end:
-                f_k = self._lds[t]
-                action_chunk[k] = f_k["action"].float()
-                is_pad[k] = False
+        # state 直接从缓存读取，不从 f 里再处理
+        state = self._states[idx]
+
+        # action chunk 直接切片，不再调用 self._lds[t]
+        ep_end = self._episode_end_map[idx]
+        valid_len = min(self.chunk_size, max(0, ep_end - idx))
+
+        action_chunk = torch.zeros(
+            self.chunk_size,
+            self.action_dim,
+            dtype=torch.float32,
+        )
+
+        if valid_len > 0:
+            action_chunk[:valid_len] = self._actions[idx : idx + valid_len]
+
+        is_pad = self._arange_k >= valid_len
 
         return {
             "camera": camera,
             "state": state,
             "action_chunk": action_chunk,
             "is_pad": is_pad,
-            "task": torch.tensor([self.task_id], dtype=torch.long),
+            "task": torch.tensor(self.task_id, dtype=torch.long),
         }
 
 
@@ -303,12 +384,12 @@ def main():
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch, shuffle=True,
-        num_workers=16, pin_memory=True, prefetch_factor=2,
+        num_workers=12, pin_memory=True, prefetch_factor=2,
         persistent_workers=True,
     )
     val_loader = DataLoader(
         val_dataset, batch_size=args.batch, shuffle=False,
-        num_workers=8, pin_memory=True, prefetch_factor=2,
+        num_workers=6, pin_memory=True, prefetch_factor=2,
         persistent_workers=True,
     )
 
@@ -366,7 +447,8 @@ def main():
         train_loss = train_epoch(model, train_loader, optimizer, cfg["kl_weight"], args.device)
         val_metrics = validate(model, val_loader, cfg["kl_weight"], args.device)
 
-        if (epoch + 1) % max(1, args.epochs // 20) == 0:
+        # if (epoch + 1) % max(1, args.epochs // 20) == 0:
+        if True:
             print(f"Epoch {epoch + 1}/{start_epoch + args.epochs}: "
                   f"train_loss={train_loss:.6f}  "
                   f"val_l1={val_metrics['l1']:.6f}  "
