@@ -3,31 +3,25 @@
 
 从 LeRobotDataset 加载专家数据，训练 DETRVAE 策略网络。
 
-与 train_imitation.py 的关键区别：
-  1. 使用 DETRVAE (CVAE + Transformer) 而非 UR5MultimodalBackbone
-  2. 状态仅取前 7 维（丢弃 last_action）
-  3. 构造 K 步 action chunk（不足用 padding 填充）
-  4. 损失 = L1 + kl_weight * KL divergence
-  5. 使用 AdamW 优化器（与 ACT 一致）
+训练超参通过命令行指定，模型架构通过 --config 指定。
+运行时自动将模型配置 + 训练参数写入输出目录。
 
 示例:
   python scripts/train_aloha_act.py \\
       --data outputs/datasets/expert/pick_place/20260606_193958/ \\
-      --epochs 200 --batch 64 --lr 1e-4
+      --epochs 200 --batch 32
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import sys
 import time
-import shutil
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 import torch
-import torch.nn.functional as F
 import yaml
 from torch.utils.data import DataLoader, Dataset
 
@@ -35,7 +29,6 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from ur_mjlab_bc_rl.models.policy.aloha_act_backbone import DETRVAE, build_detr_vae
-from ur_mjlab_bc_rl.config_loader import load_multimodal_model
 
 
 # ═══════════════════════════════════════════════════════════
@@ -84,22 +77,31 @@ class ChunkedLeRobotDataset(Dataset):
 
         # 获取 episode 边界（用于正确处理 chunk 边界）
         self._episode_boundaries = self._compute_episode_boundaries()
+        self._episode_end_map = self._build_episode_end_map()  # O(1) 查找
 
     def _compute_episode_boundaries(self) -> list[int]:
         """计算每个 episode 的起始帧索引。"""
         boundaries = [0]
         try:
-            # LeRobot dataset 的 episodes 信息
             eps = self._lds.episodes
             if eps is not None:
                 for ep in eps:
                     boundaries.append(boundaries[-1] + ep["length"])
         except (AttributeError, KeyError):
             pass
-        # 如果无法获取 episode 信息，假设所有帧是连续的
         if len(boundaries) == 1:
             boundaries.append(self._len)
         return boundaries
+
+    def _build_episode_end_map(self) -> list[int]:
+        """预计算每帧对应的 episode 结束帧索引。 O(N) 一次性构建。"""
+        end_map = [0] * self._len
+        for i in range(len(self._episode_boundaries) - 1):
+            start = self._episode_boundaries[i]
+            end = self._episode_boundaries[i + 1]
+            for j in range(start, min(end, self._len)):
+                end_map[j] = end
+        return end_map
 
     def __len__(self) -> int:
         return self._len
@@ -118,24 +120,17 @@ class ChunkedLeRobotDataset(Dataset):
         full_state = f["observation.state"].float()  # [14]
         state = full_state[:self.state_dim]           # [7]
 
-        # Action chunk
+        # Action chunk — O(1) episode 边界查找
         action_chunk = torch.zeros(self.chunk_size, self.action_dim)
         is_pad = torch.ones(self.chunk_size, dtype=torch.bool)
+        ep_end = self._episode_end_map[idx] if idx < len(self._episode_end_map) else self._len
 
         for k in range(self.chunk_size):
             t = idx + k
-            if t < self._len:
-                # 检查是否跨 episode 边界
-                in_same_episode = True
-                for b in self._episode_boundaries:
-                    if b > idx:
-                        in_same_episode = t < b
-                        break
-                if in_same_episode:
-                    f_k = self._lds[t]
-                    action_chunk[k] = f_k["action"].float()
-                    is_pad[k] = False
-                # else: 跨 episode → 保持 padding
+            if t < ep_end:
+                f_k = self._lds[t]
+                action_chunk[k] = f_k["action"].float()
+                is_pad[k] = False
 
         return {
             "camera": camera,
@@ -147,17 +142,8 @@ class ChunkedLeRobotDataset(Dataset):
 
 
 # ═══════════════════════════════════════════════════════════
-# 模型和训练
+# 训练循环
 # ═══════════════════════════════════════════════════════════
-
-def load_aloha_act_config() -> dict:
-    """加载 ALOHA ACT 模型配置。"""
-    config_path = PROJECT_ROOT / "configs" / "model" / "aloha_act.yaml"
-    if not config_path.exists():
-        raise FileNotFoundError(f"配置文件不存在: {config_path}")
-    with open(config_path) as f:
-        return yaml.safe_load(f)
-
 
 def train_epoch(
     model: DETRVAE,
@@ -234,20 +220,22 @@ def main():
     parser = argparse.ArgumentParser(description="ALOHA ACT 训练")
     parser.add_argument("--data", type=str, required=True, help="LeRobotDataset 路径")
     parser.add_argument("--task", type=str, default="pick_place", help="任务名称")
-    parser.add_argument("--epochs", type=int, default=200, help="训练轮数")
-    parser.add_argument("--batch", type=int, default=32, help="批量大小")
+    parser.add_argument("--config", type=str, default="configs/model/aloha_act.yaml",
+                        help="模型配置文件路径")
+    parser.add_argument("--epochs", type=int, default=100, help="训练轮数")
+    parser.add_argument("--batch", type=int, default=8, help="批量大小")
     parser.add_argument("--lr", type=float, default=1e-4, help="学习率")
     parser.add_argument("--lr-backbone", type=float, default=1e-5, help="Backbone 学习率")
     parser.add_argument("--weight-decay", type=float, default=1e-4, help="权重衰减")
-    parser.add_argument("--kl-weight", type=float, default=10.0, help="KL 散度权重")
-    parser.add_argument("--chunk-size", type=int, default=100, help="动作分块大小 K")
-    parser.add_argument("--state-dim", type=int, default=7, help="状态维度（不含 last_action）")
+    parser.add_argument("--kl-weight", type=float, default=None, help="KL 散度权重（覆盖配置）")
+    parser.add_argument("--chunk-size", type=int, default=None, help="动作分块大小 K（覆盖配置）")
+    parser.add_argument("--state-dim", type=int, default=7, help="状态维度")
     parser.add_argument("--output", type=str, default="outputs/checkpoints", help="输出目录")
     parser.add_argument("--val-split", type=float, default=0.1, help="验证集比例")
     parser.add_argument("--device", type=str, default="cuda" if torch.cuda.is_available() else "cpu", help="训练设备")
     parser.add_argument("--seed", type=int, default=42, help="随机种子")
     parser.add_argument("--resume", type=str, default=None, help="从 checkpoint 恢复训练")
-    parser.add_argument("--save-every", type=int, default=20, help="每 N epoch 保存")
+    parser.add_argument("--save-every", type=int, default=10, help="每 N epoch 保存")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -257,24 +245,38 @@ def main():
     output_dir = Path(args.output) / args.task / time.strftime("%Y%m%d_%H%M%S")
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # ── 加载配置 ──
-    cfg = load_aloha_act_config()
-    cfg["chunk_size"] = args.chunk_size
-    cfg["state_encoder"]["input_dim"] = args.state_dim
-    cfg["kl_weight"] = args.kl_weight
+    # ── 加载模型配置 ──
+    config_path = PROJECT_ROOT / args.config
+    if not config_path.exists():
+        raise FileNotFoundError(f"模型配置文件不存在: {config_path}")
+    with open(config_path) as f:
+        cfg = yaml.safe_load(f)
 
-    # 保存配置
+    # CLI 覆盖
+    if args.chunk_size is not None:
+        cfg["chunk_size"] = args.chunk_size
+    if args.kl_weight is not None:
+        cfg["kl_weight"] = args.kl_weight
+    cfg["state_encoder"]["input_dim"] = args.state_dim
+
+    # 保存配置到输出目录
     config_dir = output_dir / "configs"
     config_dir.mkdir(parents=True, exist_ok=True)
     with open(config_dir / "aloha_act.yaml", "w") as f:
         yaml.dump(cfg, f, default_flow_style=False, sort_keys=False)
+    # 保存训练参数
+    train_args = {k: v for k, v in vars(args).items()
+                  if k not in ("data", "task", "config", "output", "device", "resume")}
+    with open(config_dir / "training_args.json", "w") as f:
+        json.dump(train_args, f, indent=2, default=str)
 
     print(f"\n{'=' * 60}")
     print(f"ALOHA ACT 训练")
     print(f"{'=' * 60}")
     print(f"数据: {data_path}")
+    print(f"模型配置: {config_path}")
     print(f"Epochs: {args.epochs}  Batch: {args.batch}  LR: {args.lr}")
-    print(f"Chunk size: {args.chunk_size}  KL weight: {args.kl_weight}")
+    print(f"Chunk size: {cfg['chunk_size']}  KL weight: {cfg['kl_weight']}")
     print(f"设备: {args.device}")
 
     # ── 加载数据集 ──
@@ -285,7 +287,7 @@ def main():
 
     full_dataset = ChunkedLeRobotDataset(
         root, repo_id,
-        chunk_size=args.chunk_size,
+        chunk_size=cfg["chunk_size"],
         action_dim=cfg["action_dim"],
         state_dim=args.state_dim,
     )
@@ -301,11 +303,13 @@ def main():
 
     train_loader = DataLoader(
         train_dataset, batch_size=args.batch, shuffle=True,
-        num_workers=4, pin_memory=True, prefetch_factor=2,
+        num_workers=16, pin_memory=True, prefetch_factor=2,
+        persistent_workers=True,
     )
     val_loader = DataLoader(
         val_dataset, batch_size=args.batch, shuffle=False,
-        num_workers=2, pin_memory=True, prefetch_factor=2,
+        num_workers=8, pin_memory=True, prefetch_factor=2,
+        persistent_workers=True,
     )
 
     # ── 模型 ──
@@ -327,6 +331,13 @@ def main():
 
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"  可训练参数: {n_params:,} ({n_params / 1e6:.2f}M)")
+    print(f"    CVAE Encoder:")
+    print(f"      action sequence linear 参数: {sum(p.numel() for p in model.encoder_action_proj.parameters() if p.requires_grad):,}")
+    print(f"      transformer 参数: {sum(p.numel() for p in model.cvae_encoder.parameters() if p.requires_grad):,}")
+    print(f"    CVAE Decoder:")
+    print(f"      visual encoder 参数: {sum(p.numel() for p in model.visual_encoder.parameters() if p.requires_grad):,}")
+    print(f"      transformer encoder 参数: {sum(p.numel() for p in model.dec_encoder.parameters() if p.requires_grad):,}")
+    print(f"      transformer decoder 参数: {sum(p.numel() for p in model.dec_decoder.parameters() if p.requires_grad):,}")
 
     # ── 优化器（与 ACT 一致：AdamW + 分离 backbone lr）──
     backbone_params = []
@@ -352,8 +363,8 @@ def main():
     # ── 训练 ──
     print(f"\n[3/3] 开始训练...")
     for epoch in range(start_epoch, start_epoch + args.epochs):
-        train_loss = train_epoch(model, train_loader, optimizer, args.kl_weight, args.device)
-        val_metrics = validate(model, val_loader, args.kl_weight, args.device)
+        train_loss = train_epoch(model, train_loader, optimizer, cfg["kl_weight"], args.device)
+        val_metrics = validate(model, val_loader, cfg["kl_weight"], args.device)
 
         if (epoch + 1) % max(1, args.epochs // 20) == 0:
             print(f"Epoch {epoch + 1}/{start_epoch + args.epochs}: "

@@ -1,66 +1,113 @@
 # ═══════════════════════════════════════════════════════════
-# ALOHA ACT 模型配置（仿 ACT 原始架构）
+# ALOHA ACT 模型配置
 # ═══════════════════════════════════════════════════════════
 #
-# 输入: camera (4, H, W) + state (7,)   [无 task_id, 无 last_action]
+# 输入: camera (4, H, W) + state (7,)
 # 输出: action chunk (K, 7)
 #
-# 架构: CVAE (Transformer encoder-decoder) + CNN visual encoder
+# 通过 --config 指定：python scripts/train_aloha_act.py --config configs/model/aloha_act.yaml
 
-# ── 视觉编码器（tokens 模式：不配置 head，输出空间特征）──
+# ── 视觉编码器 ───────────────────────────────────────────
+# tokens 模式：不配置 head → 输出 [B, 300, 256] 空间特征给 Transformer
 visual_encoder:
-  type: rgbd_cnn
-  in_channels: 4
-  image_size: [240, 320]
+  type: rescnn          # 编码器类型：rescnn | vit
+  in_channels: 4          # RGB(3) + Depth(1)
+  image_size: [240, 320]  # (H, W)
 
+  # -- Stem：初始卷积，降采样 --
   stem:
-    channels: 64
-    kernel: 7
-    stride: 2
-    pool: true
-    pool_kernel: 3
-    pool_stride: 2
+    channels: 64          # 输出通道数
+    kernel: 7             # 卷积核大小
+    stride: 2             # 步长
+    activation: relu      # 激活函数：relu | silu | gelu | elu
+    group_norm:           # 归一化：batch_norm | group_norm | layer_norm；不写则不归一化
+      num_groups: 8       #   GroupNorm 分组数
+      eps: 1.0e-3         #   epsilon
+    max_pool:             # 最大池化；不写则不池化
+      kernel: 3
+      stride: 2
 
+  # -- 残差阶段（每阶段 = N 个 BasicBlock） --
   stages:
-    - { channels: 64, blocks: 2, stride: 1 }
-    - { channels: 128, blocks: 2, stride: 2 }
-    - { channels: 256, blocks: 2, stride: 2 }
+    - channels: 64        # 输出通道
+      blocks: 2           # BasicBlock 数量（2 block × 2 conv = 4 层）
+      stride: 1           # 首个 block 的 stride（下采样）
+    - channels: 128
+      blocks: 2
+      stride: 2           # 此阶段 stride=2 → 空间尺寸减半
+    - channels: 256
+      blocks: 2
+      stride: 2
+    - channels: 512
+      blocks: 2
+      stride: 2
 
-  kernel_size: 3
-  activation: relu
-  norm: group_norm
+  # -- 残差块通用参数 --
+  stages_cfg:
+    kernel_size: 3        # 卷积核大小
+    activation: relu      # 激活函数
+    dropout: 0.0          # Dropout2d 概率
+    batch_norm:           # 归一化： batch_norm | group_norm | layer_norm；不写则不归一化
+      # num_groups: 8
+      eps: 1.0e-3
 
-  # 不配置 head → tokens 模式，输出 [B, 256, 15, 20] → [B, 300, 256]
+  # -- 输出头（不写则以 tokens 模式输出空间特征） --
+  # head:
+    # adaptive_avg_pool:    # 自适应平均池化（也可用 adaptive_max_pool）；不写则不池化
+      # pool_size: [1, 1]   #   池化目标尺寸 (H, W)
+    # hidden:               # 隐藏层；不写则跳过 → 直接 output
+    #   dim: 512            #   隐藏层维度
+    #   activation: relu    #   激活函数：relu | silu | gelu | none
+    #   layer_norm: true    #   是否加 LayerNorm
+    # output:               # 输出层（必写）
+    #   dim: 512            #   输出维度
+    #   layer_norm: true    #   是否加 LayerNorm
+    #   activation: none    #   激活函数；none = 无激活
 
-# ── 状态编码器（ACT 原始：单层 Linear）──
+# ── 状态编码器 ───────────────────────────────────────────
+# 有 hidden → MLP；无 hidden → 单层 Linear
 state_encoder:
-  type: linear             # linear | mlp
-  input_dim: 7             # arm_joint_pos(6) + gripper_pos(1)，不含 last_action
-  output_dim: 256          # = hidden_dim
-  output_norm: true
+  input_dim: 7            # arm_joint_pos(6) + gripper_pos(1)
+  # hidden:                 # 隐藏层；不写 → 单层 Linear(7→output.dim)
+  #   dim: 128              #   隐藏层维度
+  #   activation: silu      #   激活函数
+  #   layer_norm: false     #   是否加 LayerNorm
+  #   dropout: 0.0          #   Dropout 概率
+  output:                 # 输出层（必写）
+    dim: 512              #   输出维度
+    layer_norm: true      #   是否加 LayerNorm
 
-# ── Transformer 参数 ──────────────────────────────────────
-hidden_dim: 256
-z_dim: 32                  # 潜变量维度
-enc_layers: 4              # CVAE encoder 层数
-dec_layers: 7              # CVAE decoder 层数
-nheads: 8
-dim_feedforward: 2048
-dropout: 0.1
-pre_norm: false
+# ── Transformer 参数（三组独立配置）──────────────────────
+transformer:
+  encoder_encoder:        # CVAE encoder：从 [CLS, qpos, action_chunk] 推断 z
+    d_model: 512          #   token 嵌入维度 default: 512
+    nlayer: 4             #   encoder 层数 default: 4
+    nhead: 8              #   注意力头数 default: 8
+    dim_feedforward: 3200 #   FFN 中间维度 default: 3200
+    dropout: 0.1          #   Dropout 概率 default: 0.1
+    activation: relu      #   激活函数
+    norm_first: false     #   是否 pre-norm
 
-# ── 动作参数 ──────────────────────────────────────────────
-action_dim: 7              # ee_delta(6) + gripper(1)
-chunk_size: 10             # K：一次预测 10 步动作
-kl_weight: 10.0            # KL divergence 权重 β
+  decoder_encoder:        # Decoder 的 encoder：融合 image + latent + state
+    d_model: 512
+    nlayer: 4
+    nhead: 8
+    dim_feedforward: 3200
+    dropout: 0.1
+    activation: relu
+    norm_first: false
 
-# ── 训练参数（供 train_aloha_act.py 引用）────────────────
-training:
-  epochs: 200
-  batch_size: 32
-  learning_rate: 1e-4      # ACT 用 AdamW + 1e-4
-  lr_backbone: 1e-5        # backbone 小学习率
-  weight_decay: 1e-4
-  val_split: 0.1
-  save_every: 10
-  seed: 42
+  decoder_decoder:        # Decoder 的 decoder：交叉注意力 → action chunk
+    d_model: 512
+    nlayer: 7             #   通常比 encoder 多 3 层 default: 7
+    nhead: 8
+    dim_feedforward: 3200
+    dropout: 0.1
+    activation: relu
+    norm_first: false
+
+# ── 动作 / 潜变量 ────────────────────────────────────────
+action_dim: 7             # ee_delta(6) + gripper(1)
+chunk_size: 50            # 一次预测 K 步动作
+z_dim: 32                 # 潜变量维度，实际网络输出维度为 z_dim*2 
+kl_weight: 10.0           # KL divergence 权重 β（训练用，可在 CLI 覆盖）

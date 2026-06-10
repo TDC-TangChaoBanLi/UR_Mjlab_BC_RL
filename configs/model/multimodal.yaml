@@ -2,112 +2,92 @@
 # 多模态 Actor 网络架构（BC 和 PPO 共用）
 # ═══════════════════════════════════════════════════════════
 #
-# 输入: camera (4, H, W) + state (D,) + task_id (scalar)
+# 输入: camera (4, H, W) + state (7,) + task_id (scalar)
 # 输出: action (7,)
-#
-# 修改此文件即同时修改 BC 和 PPO 的网络结构。
 
 # ── 视觉编码器 ───────────────────────────────────────────
-# 残差 CNN（类 ResNet18，层数更少）
 visual_encoder:
-  type: rgbd_cnn            # rgbd_cnn | rgbd_vit
-  in_channels: 4            # RGB(3) + Depth(1)
-  image_size: [240, 320]    # (H, W) - 支持非正方形
+  type: rescnn          # 编码器类型：rescnn | vit
+  in_channels: 4          # RGB(3) + Depth(1)
+  image_size: [240, 320]  # (H, W)
 
-  # Stem（初始卷积，可选 — 不配置则无 stem 直接进 stages）
+  # -- Stem：初始卷积 --
   stem:
     channels: 64
     kernel: 7
     stride: 2
-    pool: true              # conv 后接 MaxPool3×3/2
-    pool_kernel: 3
-    pool_stride: 2
-
-  # 残差阶段 — 每阶段 = N 个 BasicBlock（2 conv + 1 残差连接）
-  # 阶段间通过首个 block 的 stride 降采样
-  stages:
-    - channels: 64          # 60×80
-      blocks: 2             # 4 层 conv + 2 条残差
-      stride: 1
-    - channels: 128         # 30×40
-      blocks: 2
-      stride: 2
-    - channels: 256         # 15×20
-      blocks: 2
-      stride: 2
-
-  # 残差块通用参数
-  kernel_size: 3
-  activation: relu
-  norm: group_norm          # group_norm | batch_norm | layer_norm | none
-  # norm 高级参数（可选）
-  # norm_eps: 1e-3          # 默认 1e-3（避免 batch_norm 小方差导致数值爆炸）
-  # norm_momentum: 0.1      # batch_norm 动量
-  # norm_num_groups: 8       # group_norm 分组数
-
-  # 输出头（可选 — 不配置则输出 256×15×20 空间特征作为 tokens）
-  # 注意：当 global_pool 后维度很大时（如 4096），避免使用 hidden 中间层，
-  # 否则 Linear 参数过多（4096×256=1M），容易导致梯度坍塌。
-  # 推荐直接单层 Linear，或使用 pool_size: [1,1] 减小输入维度。
-  head:
-    global_pool: adaptive_avg  # adaptive_avg | adaptive_max（可选）
-    pool_size: [2, 2]       # → 256×2×2 = 1024（小尺寸降坍塌风险）
-    # hidden: []             # 无隐藏层: Linear(1024→512)
     activation: relu
-    output_dim: 512
-    output_norm: true        # LayerNorm 输出，防止 scale 失控
+    group_norm:           # 归一化：batch_norm | group_norm | layer_norm
+      num_groups: 8
+      eps: 1.0e-3
+    max_pool:             # 最大池化；不写则不池化
+      kernel: 3
+      stride: 2
 
-# 普通 CNN 示例（向后兼容，只需 hidden_dims）:
-# visual_encoder:
-#   type: rgbd_cnn
-#   in_channels: 4
-#   image_size: [128, 128]
-#   hidden_dims: [32, 64, 128]
-#   kernel_size: 3
-#   pool_size: 2
-#   output_dim: 256
+  # -- 残差阶段 --
+  stages:
+    - channels: 64
+      blocks: 2
+      stride: 1
+    - channels: 128
+      blocks: 2
+      stride: 2
+    - channels: 256
+      blocks: 2
+      stride: 2
 
-# RGBD-ViT 示例:
-# visual_encoder:
-#   type: rgbd_vit
-#   in_channels: 4
-#   image_size: [128, 128]
-#   patch_size: 16
-#   embed_dim: 256
-#   depth: 4
-#   num_heads: 8
-#   mlp_ratio: 4.0
-#   dropout: 0.1
-#   output_dim: 256
+  # -- 残差块通用参数 --
+  stages_cfg:
+    kernel_size: 3
+    activation: relu
+    dropout: 0.0
+    group_norm:           # 归一化：batch_norm | group_norm | layer_norm
+      num_groups: 8
+      eps: 1.0e-3
+
+  # -- 输出头：vector 模式，Pool → Flatten → MLP → [B, D] --
+  head:
+    adaptive_avg_pool:    # 自适应平均池化
+      pool_size: [2, 2]   #   池化到 2×2 → 256×2×2 = 1024
+    output:               # 输出层：Linear(1024→512) + LayerNorm
+      dim: 512
+      layer_norm: true
 
 # ── 状态编码器 ───────────────────────────────────────────
+# 有 hidden → MLP；无 hidden → 单层 Linear
 state_encoder:
-  type: mlp
-  input_dim: 7             # 由 ObservationCollector 决定
-  hidden_dims: [128]        # 隐藏层维度
-  output_dim: 256           # 最终特征向量维度
-  activation: silu          # 激活函数: silu, relu, elu
-  dropout: 0.0              # dropout 概率
-  output_norm: true         # LayerNorm 输出，与视觉编码器 scale 对齐
+  input_dim: 7            # arm_joint_pos(6) + gripper_pos(1)
+  hidden:                 # 隐藏层；不写 → 单层 Linear
+    dim: 128
+    activation: silu
+    layer_norm: false
+    dropout: 0.0
+  output:                 # 输出层（必写）
+    dim: 256
+    layer_norm: true
 
-# ── 任务编码器 ───────────────────────────────────────────
+# ── 任务编码器（Embedding） ──────────────────────────────
 task_encoder:
-  type: embedding
-  num_tasks: 3              # pick_place(0), push_t(1), peg_slot(2)
-  embedding_dim: 64         # 任务嵌入维度
-  hidden_dims: [128]         # 投影 MLP 隐藏层
-  output_dim: 256           # 最终特征向量维度
+  type: embedding         # 编码器类型：embedding
+  num_tasks: 3            # 任务数：pick_place(0), push_t(1), peg_slot(2)
+  embedding_dim: 64       # 嵌入向量维度
+  hidden:                 # 隐藏层
+    dim: 128
+    activation: relu
+    layer_norm: false
+  output:                 # 输出层
+    dim: 256
+    layer_norm: true
 
 # ── 融合模块 ─────────────────────────────────────────────
 fusion:
-  type: concat               # concat | film | attention
-  # concat: 直接拼接 visual+state+task，无可学习调制，最稳定
-  # film: 任务条件调制，但 gamma 易爆炸导致融合输出失控
+  type: concat            # 融合类型：concat | film
+  # concat: 直接拼接 visual+state+task → [B, 768]，无额外参数
 
 # ── 策略 MLP ─────────────────────────────────────────────
 policy_mlp:
   hidden_dims: [1024, 512, 128]  # 融合后 → 动作均值的 MLP 隐藏层
-  activation: elu              # 激活函数
+  activation: elu                # 激活函数
 
 # ── 动作维度 ─────────────────────────────────────────────
-action_dim: 7  # 6个关节位置 + 1个夹爪指令
+action_dim: 7             # ee_delta(6) + gripper(1)

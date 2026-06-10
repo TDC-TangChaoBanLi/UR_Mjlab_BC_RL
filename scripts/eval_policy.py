@@ -114,8 +114,7 @@ def evaluate_with_model(
     camera = CameraSensor(mj, CAMERA_NAME, IMAGE_SIZE)
     collector = ObservationCollector(
         mj, camera, ARM_JOINTS, GRIPPER_JOINTS,
-        depth_range[0], depth_range[1],
-        include_last_action=(model_type == "bc"),
+        depth_range[0], depth_range[1]
     )
     reset_mgr = ResetManager(mj)
 

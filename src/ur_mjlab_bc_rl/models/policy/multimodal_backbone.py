@@ -26,13 +26,13 @@ def build_actor(
     """BC 和 PPO 共用的 Actor 网络构造函数。
 
     architecture_cfg:
-        visual_encoder  — {"type": "rgbd_cnn", "output_dim": 256, ...}
+        visual_encoder  — {"type": "rescnn", "output_dim": 256, ...}
         state_encoder   — {"type": "mlp", "output_dim": 128, ...}
         task_encoder    — {"type": "embedding", "num_tasks": 3, ...}
         fusion          — {"type": "film", ...}
         policy_mlp      — {"hidden_dims": [512,256,128], "activation": "elu"}
     """
-    visual_cfg = architecture_cfg.get("visual_encoder", {"type": "rgbd_cnn", "output_dim": 256})
+    visual_cfg = architecture_cfg.get("visual_encoder", {"type": "rescnn", "output_dim": 256})
     state_cfg = architecture_cfg.get("state_encoder", {"type": "mlp", "output_dim": 128})
     task_cfg = architecture_cfg.get("task_encoder", {"type": "embedding", "num_tasks": 3, "embedding_dim": 32, "output_dim": 64})
     fusion_cfg = architecture_cfg.get("fusion", {"type": "film"})
@@ -75,14 +75,14 @@ class UR5MultimodalBackbone(nn.Module):
         super().__init__()
 
         if model_cfg is not None:
-            visual_cfg = model_cfg.get("visual_encoder", {"type": "rgbd_cnn", "output_dim": 256})
+            visual_cfg = model_cfg.get("visual_encoder", {"type": "rescnn", "output_dim": 256})
             state_cfg = model_cfg.get("state_encoder", {"type": "mlp", "output_dim": 128})
             task_cfg = model_cfg.get("task_encoder", {"type": "embedding", "num_tasks": 3, "embedding_dim": 32, "output_dim": 64})
             fusion_cfg = model_cfg.get("fusion", {"type": "film"})
             policy_cfg = model_cfg.get("policy_mlp", {"hidden_dims": [512, 256, 128], "activation": "elu"})
             output_dim = model_cfg.get("action_dim", output_dim)
 
-        visual_cfg = visual_cfg or {"type": "rgbd_cnn", "output_dim": 256}
+        visual_cfg = visual_cfg or {"type": "rescnn", "output_dim": 256}
         state_cfg = state_cfg or {"type": "mlp", "input_dim": 14, "hidden_dims": [128, 128], "output_dim": 128}
         task_cfg = task_cfg or {"type": "embedding", "num_tasks": 3, "embedding_dim": 32, "output_dim": 64}
         fusion_cfg = fusion_cfg or {"type": "film"}

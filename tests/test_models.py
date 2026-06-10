@@ -78,20 +78,21 @@ class TestSpecs:
         assert spec.num_tasks == 3
 
 
-class TestRGBDCNNEncoder:
-    """测试 CNN 视觉编码器（普通模式 + 残差模式）。"""
+class TestVisualEncoderCNN:
+    """测试 CNN 视觉编码器 — 全部通过 build_visual_encoder 工厂创建。"""
 
     # ── 普通 CNN（向后兼容）─────────────────────────
 
     @pytest.fixture
     def encoder(self):
-        from ur_mjlab_bc_rl.models.vision.rgbd_cnn import RGBDCNNEncoder
-        return RGBDCNNEncoder(
-            in_channels=4,
-            image_size=(64, 64),
-            hidden_dims=[32, 64, 128],
-            output_dim=256,
-        )
+        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        return build_visual_encoder({
+            "type": "rescnn",
+            "in_channels": 4,
+            "image_size": [64, 64],
+            "hidden_dims": [32, 64, 128],
+            "output_dim": 256,
+        })
 
     def test_forward_plain(self, encoder):
         x = torch.randn(4, 4, 64, 64)
@@ -101,13 +102,14 @@ class TestRGBDCNNEncoder:
 
     def test_variable_size_plain(self):
         """测试普通模式可变图像尺寸。"""
-        from ur_mjlab_bc_rl.models.vision.rgbd_cnn import RGBDCNNEncoder
-        encoder = RGBDCNNEncoder(
-            in_channels=4,
-            image_size=(128, 128),
-            hidden_dims=[32, 64, 128],
-            output_dim=256,
-        )
+        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        encoder = build_visual_encoder({
+            "type": "rescnn",
+            "in_channels": 4,
+            "image_size": [128, 128],
+            "hidden_dims": [32, 64, 128],
+            "output_dim": 256,
+        })
         x1 = torch.randn(2, 4, 64, 64)
         x2 = torch.randn(2, 4, 128, 128)
         out1 = encoder(x1)
@@ -123,27 +125,29 @@ class TestRGBDCNNEncoder:
     @pytest.fixture
     def residual_encoder_vector(self):
         """240×320 → 512-dim vector 的残差 CNN。"""
-        from ur_mjlab_bc_rl.models.vision.rgbd_cnn import RGBDCNNEncoder
-        return RGBDCNNEncoder(
-            in_channels=4,
-            image_size=(240, 320),
-            stages=[
+        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        return build_visual_encoder({
+            "type": "rescnn",
+            "in_channels": 4,
+            "image_size": [240, 320],
+            "stem": {
+                "channels": 64, "kernel": 7, "stride": 2,
+                "max_pool": {"kernel": 3, "stride": 2},
+            },
+            "stages": [
                 {"channels": 64, "blocks": 2, "stride": 1},
                 {"channels": 128, "blocks": 2, "stride": 2},
                 {"channels": 256, "blocks": 2, "stride": 2},
             ],
-            stem_cfg={
-                "channels": 64, "kernel": 7, "stride": 2,
-                "pool": True, "pool_kernel": 3, "pool_stride": 2,
+            "kernel_size": 3,
+            "activation": "relu",
+            "batch_norm": {"eps": 1e-3},
+            "head": {
+                "adaptive_avg_pool": {"pool_size": [4, 4]},
+                "hidden": {"dim": 256},
+                "output": {"dim": 512},
             },
-            head_cfg={
-                "global_pool": "adaptive_avg",
-                "pool_size": [4, 4],
-                "hidden": [256],
-                "output_dim": 512,
-            },
-            block_cfg={"kernel_size": 3, "activation": "relu", "norm": "batch_norm"},
-        )
+        })
 
     def test_forward_residual_vector(self, residual_encoder_vector):
         x = torch.randn(2, 4, 240, 320)
@@ -159,24 +163,27 @@ class TestRGBDCNNEncoder:
     @pytest.fixture
     def residual_encoder_tokens(self):
         """无 head → 输出空间特征 tokens。"""
-        from ur_mjlab_bc_rl.models.vision.rgbd_cnn import RGBDCNNEncoder
-        return RGBDCNNEncoder(
-            in_channels=4,
-            image_size=(128, 128),
-            stages=[
+        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        return build_visual_encoder({
+            "type": "rescnn",
+            "in_channels": 4,
+            "image_size": [128, 128],
+            "stem": {
+                "channels": 64, "kernel": 7, "stride": 2,
+                "max_pool": {"kernel": 3, "stride": 2},
+            },
+            "stages": [
                 {"channels": 64, "blocks": 2, "stride": 1},
                 {"channels": 128, "blocks": 2, "stride": 2},
             ],
-            stem_cfg={"channels": 64, "kernel": 7, "stride": 2, "pool": True},
-            # 无 head_cfg → tokens 模式
-        )
+            # 无 head → tokens 模式
+        })
 
     def test_forward_residual_tokens(self, residual_encoder_tokens):
         x = torch.randn(2, 4, 128, 128)
         out = residual_encoder_tokens(x)
         assert out.vector is None
         assert out.tokens is not None
-        # 128 → stem→64→32 → stage2→16  → 最终 16×16×128
         assert out.tokens.shape[0] == 2
         assert out.tokens.shape[-1] == 128  # 最后 stage 通道数
 
@@ -188,16 +195,19 @@ class TestRGBDCNNEncoder:
 
     def test_residual_no_stem_no_head(self):
         """最简残差模式：无 stem + 无 head → tokens。"""
-        from ur_mjlab_bc_rl.models.vision.rgbd_cnn import RGBDCNNEncoder
-        encoder = RGBDCNNEncoder(
-            in_channels=4,
-            image_size=(64, 64),
-            stages=[
+        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        encoder = build_visual_encoder({
+            "type": "rescnn",
+            "in_channels": 4,
+            "image_size": [64, 64],
+            "stages": [
                 {"channels": 32, "blocks": 1, "stride": 1},
                 {"channels": 64, "blocks": 1, "stride": 2},
             ],
-            block_cfg={"kernel_size": 3, "activation": "relu", "norm": "batch_norm"},
-        )
+            "kernel_size": 3,
+            "activation": "relu",
+            "batch_norm": {"eps": 1e-3},
+        })
         x = torch.randn(2, 4, 64, 64)
         out = encoder(x)
         assert out.vector is None
@@ -207,22 +217,21 @@ class TestRGBDCNNEncoder:
     # ── 残差 ResNet — 可变尺寸 ─────────────────────
 
     def test_residual_variable_size(self):
-        """残差模式支持可变尺寸（无全局池化时直接 tokens）。"""
-        from ur_mjlab_bc_rl.models.vision.rgbd_cnn import RGBDCNNEncoder
-        encoder = RGBDCNNEncoder(
-            in_channels=4,
-            image_size=(128, 128),
-            stages=[
+        """残差模式支持可变尺寸。"""
+        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        encoder = build_visual_encoder({
+            "type": "rescnn",
+            "in_channels": 4,
+            "image_size": [128, 128],
+            "stages": [
                 {"channels": 64, "blocks": 1, "stride": 2},
             ],
-            head_cfg={
-                "global_pool": "adaptive_avg",
-                "pool_size": [4, 4],
-                "hidden": [128],
-                "output_dim": 256,
+            "head": {
+                "adaptive_avg_pool": {"pool_size": [4, 4]},
+                "hidden": {"dim": 128},
+                "output": {"dim": 256},
             },
-        )
-        # AdaptiveAvgPool 使不同输入尺寸均可用
+        })
         x1 = torch.randn(2, 4, 64, 64)
         x2 = torch.randn(2, 4, 128, 128)
         out1 = encoder(x1)
@@ -241,13 +250,13 @@ class TestRGBDCNNEncoder:
         assert x.grad is not None
         assert not torch.allclose(x.grad, torch.zeros_like(x.grad))
 
-    # ── 工厂方法 ────────────────────────────────────
+    # ── 工厂方法（两 test 保持不变但修复 config 格式）──
 
     def test_factory_residual(self):
         """通过 build_visual_encoder 工厂创建残差 CNN。"""
         from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
         cfg = {
-            "type": "rgbd_cnn",
+            "type": "rescnn",
             "in_channels": 4,
             "image_size": [64, 64],
             "stages": [
@@ -255,13 +264,12 @@ class TestRGBDCNNEncoder:
                 {"channels": 64, "blocks": 1, "stride": 2},
             ],
             "head": {
-                "global_pool": "adaptive_avg",
-                "pool_size": [4, 4],
-                "output_dim": 128,
+                "adaptive_avg_pool": {"pool_size": [4, 4]},
+                "output": {"dim": 128},
             },
             "kernel_size": 3,
             "activation": "relu",
-            "norm": "batch_norm",
+            "batch_norm": {"eps": 1e-3},
         }
         encoder = build_visual_encoder(cfg)
         x = torch.randn(2, 4, 64, 64)
@@ -272,7 +280,7 @@ class TestRGBDCNNEncoder:
         """工厂 — 无 stages 时回退到普通 CNN。"""
         from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
         cfg = {
-            "type": "rgbd_cnn",
+            "type": "rescnn",
             "in_channels": 4,
             "image_size": [64, 64],
             "hidden_dims": [32, 64],
@@ -285,7 +293,7 @@ class TestRGBDCNNEncoder:
 
 
 class TestMLPStateEncoder:
-    """测试 MLP 状态编码器。"""
+    """测试 MLP 状态编码器（MLP 模式 + 线性模式）。"""
 
     @pytest.fixture
     def encoder(self):
@@ -299,6 +307,43 @@ class TestMLPStateEncoder:
 
     def test_get_output_dim(self, encoder):
         assert encoder.get_output_dim() == 128
+
+    def test_linear_mode(self):
+        """线性模式：hidden_dims=None → 单层 Linear。"""
+        from ur_mjlab_bc_rl.models.state.mlp_state import MLPStateEncoder
+        encoder = MLPStateEncoder(
+            input_dim=7, hidden_dims=None, output_dim=512, output_norm=True,
+        )
+        assert encoder.is_linear
+        x = torch.randn(4, 7)
+        out = encoder(x)
+        assert out.vector.shape == (4, 512)
+        assert encoder.get_output_dim() == 512
+
+    def test_factory_linear_mode(self):
+        """通过工厂 — 无 hidden → 线性模式。"""
+        from ur_mjlab_bc_rl.models.state.encoder_factory import build_state_encoder
+        encoder = build_state_encoder({
+            "input_dim": 7,
+            "output": {"dim": 512, "layer_norm": True},
+        })
+        assert encoder.is_linear
+        x = torch.randn(4, 7)
+        out = encoder(x)
+        assert out.vector.shape == (4, 512)
+
+    def test_factory_mlp_mode(self):
+        """通过工厂 — 有 hidden → MLP 模式。"""
+        from ur_mjlab_bc_rl.models.state.encoder_factory import build_state_encoder
+        encoder = build_state_encoder({
+            "input_dim": 7,
+            "hidden": {"dim": 128, "activation": "silu"},
+            "output": {"dim": 256, "layer_norm": True},
+        })
+        assert not encoder.is_linear
+        x = torch.randn(4, 7)
+        out = encoder(x)
+        assert out.vector.shape == (4, 256)
 
 
 class TestEmbeddingTaskEncoder:
@@ -394,7 +439,7 @@ class TestUR5MultimodalActor:
     @pytest.fixture
     def actor_cfg(self):
         return {
-            "visual_encoder": {"type": "rgbd_cnn", "output_dim": 128},
+            "visual_encoder": {"type": "rescnn", "output_dim": 128},
             "state_encoder": {"type": "mlp", "input_dim": 27, "output_dim": 64},
             "task_encoder": {"type": "embedding", "num_tasks": 3, "embedding_dim": 16, "output_dim": 32},
             "fusion": {"type": "film"},
@@ -472,7 +517,7 @@ class TestUR5RslActorModel:
         }
 
         arch_cfg = {
-            "visual_encoder": {"type": "rgbd_cnn", "output_dim": 128},
+            "visual_encoder": {"type": "rescnn", "output_dim": 128},
             "state_encoder": {"type": "mlp", "input_dim": 12, "output_dim": 64},
             "task_encoder": {"type": "embedding", "num_tasks": 3, "embedding_dim": 16, "output_dim": 32},
             "fusion": {"type": "concat"},

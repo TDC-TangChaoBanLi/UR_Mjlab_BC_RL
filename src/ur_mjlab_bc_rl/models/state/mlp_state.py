@@ -1,4 +1,4 @@
-"""MLP 状态编码器。"""
+"""状态编码器 — MLP 或单层 Linear（由 YAML 配置隐式决定）。"""
 
 from __future__ import annotations
 
@@ -11,17 +11,19 @@ from .base import StateEncoderBase
 
 
 class MLPStateEncoder(StateEncoderBase):
-    """MLP 状态编码器。
-    
-    使用多层感知机处理机器人状态向量。
-    
+    """状态编码器。
+
+    根据 hidden_dims 自动选择模式：
+      - hidden_dims 非空 → MLP（含隐藏层 + 激活 + Dropout）
+      - hidden_dims 为 None 或空 → 单层 Linear（ACT 原始方案）
+
     Args:
         input_dim: 输入状态维度
-        hidden_dims: 隐藏层维度列表
+        hidden_dims: 隐藏层维度列表；None / 空 → 单层线性
         output_dim: 输出特征维度
-        activation: 激活函数名称
-        dropout: Dropout 比例
-        output_norm: 是否在输出加 LayerNorm（对齐视觉编码器 scale）
+        activation: 激活函数名称（仅 MLP 模式生效）
+        dropout: Dropout 比例（仅 MLP 模式生效）
+        output_norm: 是否在输出加 LayerNorm
     """
 
     def __init__(
@@ -34,31 +36,35 @@ class MLPStateEncoder(StateEncoderBase):
         output_norm: bool = True,
     ) -> None:
         super().__init__()
-        
-        if hidden_dims is None:
-            hidden_dims = [128, 128]
-        
         self.output_dim = output_dim
-        
-        self.mlp = MLP(
-            input_dim=input_dim,
-            hidden_dims=hidden_dims,
-            output_dim=output_dim,
-            activation=activation,
-            dropout=dropout,
-        )
+
+        if hidden_dims:
+            # MLP 模式
+            self.is_linear = False
+            self.encoder = MLP(
+                input_dim=input_dim,
+                hidden_dims=hidden_dims,
+                output_dim=output_dim,
+                activation=activation,
+                dropout=dropout,
+            )
+        else:
+            # 线性模式（ACT 原始方案：单层 Linear）
+            self.is_linear = True
+            self.encoder = nn.Linear(input_dim, output_dim)
+
         self.output_norm = nn.LayerNorm(output_dim) if output_norm else nn.Identity()
 
     def forward(self, state: torch.Tensor) -> EncoderOutput:
         """处理状态向量。
-        
+
         Args:
             state: [B, input_dim]
-        
+
         Returns:
             EncoderOutput：包含向量 [B, output_dim] 和 token [B, 1, output_dim]
         """
-        vector = self.mlp(state)  # [B, output_dim]
+        vector = self.encoder(state)  # [B, output_dim]
         vector = self.output_norm(vector)
         tokens = vector.unsqueeze(1)
         return EncoderOutput(vector=vector, tokens=tokens)

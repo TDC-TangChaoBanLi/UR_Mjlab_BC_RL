@@ -8,15 +8,14 @@ from .specs import TaskSpec as TaskSpec
 from .specs import CriticObsSpec as CriticObsSpec
 
 # 视觉编码器
-from .vision import RGBDViT as RGBDViT
-from .vision import RGBDCNNEncoder as RGBDCNNEncoder
+from .vision import ResCNN as ResCNN
+from .vision import ViT as ViT
 from .vision import VisualEncoderBase as VisualEncoderBase
 from .vision import build_visual_encoder as build_visual_encoder
 
 # 状态编码器
 from .state.base import StateEncoderBase as StateEncoderBase
 from .state.mlp_state import MLPStateEncoder as MLPStateEncoder
-from .state.linear_state import LinearStateEncoder as LinearStateEncoder
 from .state.encoder_factory import build_state_encoder as build_state_encoder
 
 # 任务编码器
@@ -51,14 +50,13 @@ __all__ = [
     "TaskSpec",
     "CriticObsSpec",
     # 视觉编码器
-    "RGBDViT",
-    "RGBDCNNEncoder",
+    "ResCNN",
+    "ViT",
     "VisualEncoderBase",
     "build_visual_encoder",
     # 状态编码器
     "StateEncoderBase",
     "MLPStateEncoder",
-    "LinearStateEncoder",
     "build_state_encoder",
     # 任务编码器
     "TaskEncoderBase",

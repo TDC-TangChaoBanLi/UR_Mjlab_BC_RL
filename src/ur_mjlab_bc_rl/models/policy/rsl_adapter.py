@@ -122,7 +122,7 @@ class UR5MultimodalModelCfg:
 
     class_name: str = "ur_mjlab_bc_rl.models.policy.rsl_adapter:UR5RslActorModel"
     architecture_cfg: dict[str, Any] = field(default_factory=lambda: {
-        "visual_encoder": {"type": "rgbd_cnn", "output_dim": 256},
+        "visual_encoder": {"type": "rescnn", "output_dim": 256},
         "state_encoder": {"type": "mlp", "output_dim": 128},
         "task_encoder": {"type": "embedding", "num_tasks": 3, "embedding_dim": 32, "output_dim": 64},
         "fusion": {"type": "film"},

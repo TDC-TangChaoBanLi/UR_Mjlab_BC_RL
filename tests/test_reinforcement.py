@@ -27,7 +27,7 @@ class TestCheckpointUtils:
         from ur_mjlab_bc_rl.models.policy.multimodal_backbone import UR5MultimodalBackbone
 
         actor = UR5MultimodalBackbone(model_cfg={
-            "visual_encoder": {"type": "rgbd_cnn", "output_dim": 64},
+            "visual_encoder": {"type": "rescnn", "output_dim": 64},
             "state_encoder": {"type": "mlp", "input_dim": 27, "output_dim": 32},
             "task_encoder": {"type": "embedding", "num_tasks": 3, "embedding_dim": 8, "output_dim": 16},
             "fusion": {"type": "film"},
@@ -70,7 +70,7 @@ class TestBCToPPO:
         from ur_mjlab_bc_rl.models.policy.multimodal_backbone import UR5MultimodalBackbone
 
         actor = UR5MultimodalBackbone(model_cfg={
-            "visual_encoder": {"type": "rgbd_cnn", "output_dim": 64},
+            "visual_encoder": {"type": "rescnn", "output_dim": 64},
             "state_encoder": {"type": "mlp", "input_dim": 27, "output_dim": 32},
             "task_encoder": {"type": "embedding", "num_tasks": 3, "embedding_dim": 8, "output_dim": 16},
             "fusion": {"type": "film"},
