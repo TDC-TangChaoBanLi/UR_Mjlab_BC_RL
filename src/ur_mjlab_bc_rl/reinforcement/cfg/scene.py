@@ -19,7 +19,7 @@ from .constants import (
 )
 
 # MJCF 路径（相对于项目根目录）
-_UR5E_MJCF: Path = Path("assets/mujoco/ur5/ur5e_full.xml")
+_UR5E_MJCF: Path = Path("assets/mujoco/robot/ur5e_full.xml")
 
 
 # =========================================================================

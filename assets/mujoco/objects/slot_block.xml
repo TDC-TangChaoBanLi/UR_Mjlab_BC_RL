@@ -5,7 +5,6 @@
   灰色
 -->
 <mujoco model="slot_block">
-  <compiler angle="radian"/>
   <worldbody>
     <body name="slot_block" pos="0 0 0.02">
       <freejoint name="slot_block_joint"/>

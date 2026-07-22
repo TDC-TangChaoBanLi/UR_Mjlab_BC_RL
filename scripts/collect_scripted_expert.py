@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import mujoco
 
 os.environ.setdefault("FFMPEG_LOGLEVEL", "error")
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
@@ -33,6 +34,9 @@ from ur_mjlab_bc_rl.simulate.env import (  # noqa: E402
 from ur_mjlab_bc_rl.simulate.dataset_writer import (  # noqa: E402
     Episode, LeRobotDatasetWriter, LeRobotDatasetConfig,
 )
+
+# Viewer 降频渲染帧率（仅当开启 viewer 时生效）
+VIEWER_FPS = 30
 
 SIM = get_sim_params()
 COLL = get_collection_params()
@@ -88,11 +92,24 @@ def _collect_one(
 
         t_policy = 0.0
         t_camera = 0.0
+        t_viewer = 0.0
+        t_sim = 0.0  # 累积仿真时间（不递减）
+        viewer_interval = 1.0 / VIEWER_FPS
+        viewer_on = mj.viewer is not None
+        wall_ep_start = time.perf_counter()
 
         for _ in range(max_steps):
-            mj.step()
+            # physics step（不通过 mj.step() 以避免每步同步 viewer）
+            mujoco.mj_step(mj.model, mj.data)
+            t_sim += pdt
             t_policy += pdt
             t_camera += pdt
+            t_viewer += pdt
+
+            # viewer 按 VIEWER_FPS 降频同步
+            if viewer_on and t_viewer >= viewer_interval:
+                mj.viewer.sync()
+                t_viewer -= viewer_interval
 
             if t_camera >= cdt:
                 cam.capture()
@@ -100,6 +117,14 @@ def _collect_one(
 
             if t_policy < adt:
                 continue
+
+            # 实时同步：每个策略步检查，仿真快于真实时间则等待（仅 viewer 开启时）
+            if viewer_on:
+                target_wall = wall_ep_start + t_sim
+                now = time.perf_counter()
+                if target_wall > now:
+                    time.sleep(target_wall - now)
+
             t_policy -= adt
 
             ee = teacher.step()
