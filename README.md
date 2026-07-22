@@ -46,13 +46,21 @@ UR_Mjlab_BC_RL/
 ├── scripts/
 │   ├── collect_scripted_expert.py   # 自动采集专家数据
 │   ├── collect_keyboard_expert.py   # 键盘交互采集
-│   ├── train_imitation.py          # BC 预训练
-│   ├── train_ppo_finetune.py       # PPO 微调
-│   ├── replay_imitation_dataset.py # 数据回放
-│   └── eval_policy.py              # 策略评估
+│   ├── train_aloha_act.py           # ALOHA ACT 训练
+│   ├── train_ppo_finetune.py        # PPO 微调
+│   ├── merge_datasets.py            # 数据集合并
+│   ├── truncate_state_dataset.py    # 数据集截断
+│   └── eval_policy.py               # 策略评估
 ├── src/ur_mjlab_bc_rl/
 │   ├── models/             # 共享模型（Actor, Critic, 编码器, 融合模块）
-│   ├── imitation/          # 专家数据生成 + BC 训练（不依赖 MjLab）
+│   ├── imitation/          # LeRobot 策略集成 + 数据采集 + 环境接口
+│   │   ├── config_base.py          # 共享 PreTrainedConfig 基类
+│   │   ├── policy_base.py          # 共享 PreTrainedPolicy 基类
+│   │   ├── dataset/                # Episode 容器 + LeRobotDataset 写入
+│   │   ├── mujoco_env/             # MuJoCo 仿真接口
+│   │   ├── expert_generation/      # Scripted teacher
+│   │   └── lerobot_policy/         # 各场景 LeRobot 策略包
+│   │       └── ur5_multimodal/     # 单臂 RGBD BC 策略
 │   ├── reinforcement/      # BC→PPO 桥接 + checkpoint 工具
 │   ├── cfg/                # MjLab 环境配置（观测/奖励/终止/事件）
 │   └── env_cfg.py          # 3 个任务的 MjLab 环境注册
@@ -88,15 +96,28 @@ python scripts/collect_keyboard_expert.py --task pick_place
 
 ### 2. BC 模仿学习预训练
 
-1. 简单的模仿学习：
-    ```bash
-    python scripts/train_imitation.py \
-        --data outputs/datasets/expert/pick_place/XXXXXX/ \
-        --task pick_place \
-        --epochs 100 --batch 64
-    ```
+使用 LeRobot 训练框架（支持单卡/多卡自动 DDP/FSDP）：
 
-2. Action Chunk with Transformer 模仿学习：
+```bash
+# 安装策略插件
+pip install -e src/ur_mjlab_bc_rl/imitation/lerobot_policy/ur5_multimodal/
+
+# 单卡训练
+lerobot-train \
+    --policy.type=ur5_multimodal \
+    --dataset.repo_id=ur5_pick_place \
+    --dataset.root=outputs/datasets/expert/pick_place/XXXXXX/ \
+    --steps=5000 --batch_size=64
+
+# 多卡训练（自动 DDP/FSDP）
+accelerate launch --num_processes=4 lerobot-train \
+    --policy.type=ur5_multimodal \
+    --dataset.repo_id=ur5_pick_place \
+    --dataset.root=outputs/datasets/expert/pick_place/XXXXXX/ \
+    --steps=10000 --batch_size=32
+```
+
+2. Action Chunk with Transformer 模仿学习（仍在独立脚本中）：
     ```bash
     python scripts/train_aloha_act.py \
         --data outputs/datasets/expert/pick_place/XXXXXX/ \

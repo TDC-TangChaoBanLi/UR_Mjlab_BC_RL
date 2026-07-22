@@ -11,6 +11,9 @@ from .mujoco_interface import MujocoInterface
 class CameraSensor:
     """单目 RGB-D 相机。
 
+    封装 MuJoCo Renderer，支持 capture → read 缓存模式。
+    每次 capture() 渲染新的 RGB 和 depth 帧，read() 返回内部缓存引用。
+
     Args:
         mj_interface: MuJoCo 仿真接口。
         camera_name: MuJoCo 相机名称。
@@ -33,9 +36,7 @@ class CameraSensor:
             raise ValueError(f"相机不存在: {camera_name!r}") from exc
 
         self._renderer: mujoco.Renderer | None = mujoco.Renderer(
-            self._mj.model,
-            height=int(H),
-            width=int(W),
+            self._mj.model, height=int(H), width=int(W)
         )
         self._rgb = np.zeros((H, W, 3), dtype=np.uint8)
         self._depth = np.zeros((H, W), dtype=np.float32)
@@ -45,7 +46,7 @@ class CameraSensor:
         return int(self._rgb.shape[0]), int(self._rgb.shape[1])
 
     def capture(self) -> None:
-        """渲染一帧 RGB 和 depth。"""
+        """渲染一帧 RGB 和深度图。"""
         self._ensure_open()
         self._rgb = self._render_rgb()
         self._depth = self._render_depth()
@@ -53,7 +54,11 @@ class CameraSensor:
     def read(self, *, copy: bool = False) -> dict[str, np.ndarray]:
         """读取最近一次采集的 RGB-D。
 
-        copy=False 时返回内部缓存引用；通常由 Episode.add 再统一复制。
+        Args:
+            copy: True 时返回副本，False 时返回内部缓存引用。
+
+        Returns:
+            {"rgb": uint8 (H,W,3), "depth": float32 (H,W)}
         """
         if copy:
             return {"rgb": self._rgb.copy(), "depth": self._depth.copy()}
@@ -63,6 +68,8 @@ class CameraSensor:
         if self._renderer is not None:
             self._renderer.close()
             self._renderer = None
+
+    # ── 内部渲染 ───────────────────────────────────────
 
     def _render_rgb(self) -> np.ndarray:
         self._ensure_open()
@@ -76,7 +83,10 @@ class CameraSensor:
         assert self._renderer is not None
         self._renderer.enable_depth_rendering()
         self._renderer.update_scene(self._mj.data, camera=self._camera_id)
-        return np.ascontiguousarray(self._renderer.render().astype(np.float32, copy=False))
+        # MuJoCo 深度渲染返回深度距离（米），直接返回 float32
+        return np.ascontiguousarray(
+            self._renderer.render().astype(np.float32, copy=False)
+        )
 
     def _ensure_open(self) -> None:
         if self._renderer is None:

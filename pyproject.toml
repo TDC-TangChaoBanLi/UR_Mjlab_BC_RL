@@ -6,14 +6,14 @@ readme = "README.md"
 authors = [
     { name = "TDC-TangChaoBanLi", email = "lihao_0630@qq.com" }
 ]
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 dependencies = [
     "mjlab>=1.4.0",
     "torch>=2.0.0",
     "numpy>=1.24.0",
     "scipy>=1.10.0",
     "mink>=1.1.1",
-    "lerobot>=0.5.1",
+    "lerobot>=0.6.0",
 ]
 
 [project.scripts]

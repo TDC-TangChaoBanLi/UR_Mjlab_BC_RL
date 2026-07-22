@@ -1,4 +1,7 @@
-"""配置加载工具 — 从 YAML 加载仿真/任务/模型参数。"""
+"""配置加载工具 — 模型配置参数加载。
+
+仿真相关配置已迁移至 ur_mjlab_bc_rl.simulate.config_loader。
+"""
 
 from __future__ import annotations
 
@@ -14,48 +17,6 @@ def _load(path: str) -> dict:
         raise FileNotFoundError(f"配置文件不存在: {path}")
     with open(_CONFIG_DIR / Path(path)) as f:
         return yaml.safe_load(f)
-
-
-# ── 仿真 / 任务 ──────────────────────────────────────────
-
-def load_default() -> dict:
-    return _load("imitation/default.yaml")
-
-
-def load_tasks() -> dict:
-    return _load("imitation/tasks.yaml")
-
-
-def load_task(task_name: str) -> dict | None:
-    return load_tasks().get(task_name)
-
-
-def get_arm_joints() -> list[str]:
-    return load_default()["robot"]["arm_joints"]
-
-def get_gripper_joints() -> list[str]:
-    return load_default()["robot"]["gripper_joints"]
-
-
-def get_default_qpos() -> list[float]:
-    return load_default()["robot"]["default_qpos"]
-
-
-def get_camera_name() -> str:
-    return load_default()["camera"]["name"]
-
-
-def get_image_size() -> tuple[int, int]:
-    s = load_default()["camera"]["image_size"]
-    return tuple(s)
-
-
-def get_sim_params() -> dict:
-    return load_default()["sim"]
-
-
-def get_collection_params() -> dict:
-    return load_default()["collection"]
 
 
 # ── 模型 ────────────────────────────────────────────────
