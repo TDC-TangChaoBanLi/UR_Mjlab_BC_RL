@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -29,6 +30,7 @@ class MujocoInterface:
         self,
         scene_path: str | Path,
         render: bool = False,
+        viewer_fps: int = 30,
     ) -> None:
         self._scene_path = Path(scene_path)
 
@@ -40,6 +42,9 @@ class MujocoInterface:
         self.viewer: Optional[mujoco.viewer.Handle] = None
         if render:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
+
+        self._viewer_interval = 1.0 / viewer_fps if viewer_fps > 0 else float("inf")
+        self._last_viewer_sync = 0.0
 
     # ── 仿真控制 ───────────────────────────────────────
 
@@ -53,7 +58,10 @@ class MujocoInterface:
         for _ in range(n):
             mujoco.mj_step(self.model, self.data)
         if self.viewer is not None:
-            self.viewer.sync()
+            now = time.perf_counter()
+            if now - self._last_viewer_sync >= self._viewer_interval:
+                self.viewer.sync()
+                self._last_viewer_sync = now
 
     def forward(self) -> None:
         """执行前向动力学/运动学。"""

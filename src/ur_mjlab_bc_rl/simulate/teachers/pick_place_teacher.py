@@ -114,6 +114,8 @@ class PickPlaceTeacher(Teacher):
     def _rotate(self) -> np.ndarray:
         """在物块上方旋转夹爪到最佳方向。"""
         if self.phase_step == 1:
+            ee = self.get_ee_pose()
+            self._target_pos = ee[:3].copy()
             cube = self.get_object_pose(CUBE_NAME)
             self._grasp_yaw = self._compute_grasp_yaw(cube[3:])
             self._target_quat = self._make_grasp_quat(self._grasp_yaw)

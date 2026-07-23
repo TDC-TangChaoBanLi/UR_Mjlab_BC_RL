@@ -5,7 +5,7 @@
   子模块文件 (arm, camera, gripper) 位于 robot/ 目录下作为文档参考。
 -->
 <mujoco model="ur5e_full">
-  <compiler angle="radian" autolimits="true" balanceinertia="true"/>
+  <compiler angle="radian" autolimits="true" balanceinertia="true" meshdir="meshes"/>
 
   <default>
     <default class="visual">
@@ -161,15 +161,15 @@
   </sensor>
 
   <!-- ========== Keyframes ========== -->
-  <keyframe>
+  <!-- <keyframe>
     <key name="home" qpos="0.0 -1.5708 1.5708 -1.5708 -1.5708 0.0 0.0"/>
-  </keyframe>
+  </keyframe> -->
 
   <!-- ================================================================= -->
   <!--  Worldbody: 完整机械臂 → 相机支架 → D435 → 夹爪                    -->
   <!-- ================================================================= -->
   <worldbody>
-    <body name="ur_base_link_inertia" pos="-0.2 0 0.7" quat="0 0 0 1" gravcomp="1">
+    <body name="ur_base_link_inertia" pos="0 0 0" quat="0 0 0 1" gravcomp="1">
       <inertial mass="4.0" diaginertia="0.00443333156 0.00443333156 0.0072" pos="0 0 0" quat="1 0 0 0"/>
       <geom name="COLLISION_ur_base_link_inertia_0" class="collision" type="mesh" mesh="MESH_base_bd1b2dd6"/>
       <geom name="VISUAL_ur_base_link_inertia_0" class="visual" type="mesh" mesh="MESH_base_b81001a2_0" rgba="0.278 0.278 0.278 1"/>
@@ -354,7 +354,7 @@
                             <geom name="VISUAL_realsense_link_15" class="visual" type="mesh" mesh="MESH_d435_6743a526_15" rgba="0.749 0.749 0.749 1" pos="0.0043 -0.0175 0" quat="0.5 0.5 0.5 0.5"/>
                             <geom name="VISUAL_realsense_link_16" class="visual" type="mesh" mesh="MESH_d435_6743a526_16" rgba="0.749 0.749 0.749 1" pos="0.0043 -0.0175 0" quat="0.5 0.5 0.5 0.5"/>
                             <geom name="VISUAL_realsense_link_17" class="visual" type="mesh" mesh="MESH_d435_6743a526_17" rgba="0.749 0.749 0.749 1" pos="0.0043 -0.0175 0" quat="0.5 0.5 0.5 0.5"/>
-                            <camera name="realsense_link_CAMERA" mode="fixed" pos="0 0 0" euler="0 -1.5708 -1.5708" fovy="75" resolution="128 128"/>
+                            <camera name="realsense_link_CAMERA" mode="fixed" pos="0 0 0" euler="0 -1.5708 -1.5708" fovy="75" resolution="640 480"/>
                           </body>
                         </body>
                       </body>

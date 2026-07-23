@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import mujoco
 
 os.environ.setdefault("FFMPEG_LOGLEVEL", "error")
 os.environ.setdefault("HF_HUB_OFFLINE", "1")
@@ -35,7 +34,7 @@ from ur_mjlab_bc_rl.simulate.dataset_writer import (  # noqa: E402
     Episode, LeRobotDatasetWriter, LeRobotDatasetConfig,
 )
 
-# Viewer 降频渲染帧率（仅当开启 viewer 时生效）
+# Viewer viewer 同步渲染帧率（仅当开启 viewer 时生效）
 VIEWER_FPS = 30
 
 SIM = get_sim_params()
@@ -92,24 +91,16 @@ def _collect_one(
 
         t_policy = 0.0
         t_camera = 0.0
-        t_viewer = 0.0
         t_sim = 0.0  # 累积仿真时间（不递减）
-        viewer_interval = 1.0 / VIEWER_FPS
         viewer_on = mj.viewer is not None
         wall_ep_start = time.perf_counter()
 
         for _ in range(max_steps):
-            # physics step（不通过 mj.step() 以避免每步同步 viewer）
-            mujoco.mj_step(mj.model, mj.data)
+            # physics step（viewer 同步由 MujocoInterface 内部按 VIEWER_FPS 降频）
+            mj.step()
             t_sim += pdt
             t_policy += pdt
             t_camera += pdt
-            t_viewer += pdt
-
-            # viewer 按 VIEWER_FPS 降频同步
-            if viewer_on and t_viewer >= viewer_interval:
-                mj.viewer.sync()
-                t_viewer -= viewer_interval
 
             if t_camera >= cdt:
                 cam.capture()
@@ -202,7 +193,7 @@ def main() -> None:
         print(f"{'='*72}")
 
         render = not args.no_render
-        mj = MujocoInterface(str(sp), render=render)
+        mj = MujocoInterface(str(sp), render=render, viewer_fps=VIEWER_FPS)
         try:
             if render:
                 mj.set_viewer_camera((0.45, 0.0, 0.65), 1.8, -25.0, 130.0)
