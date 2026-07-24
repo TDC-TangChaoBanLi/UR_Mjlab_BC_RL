@@ -56,8 +56,10 @@ class PickPlaceState(Enum):
 
 
 class PickPlaceTeacher(Teacher):
-    def __init__(self, model: mujoco.MjModel, data: mujoco.MjData) -> None:
+    def __init__(self, model: mujoco.MjModel, data: mujoco.MjData,
+                 prefix: str = "") -> None:
         super().__init__(model, data)
+        self.prefix = prefix
         self.phase = PickPlaceState.MOVE_ABOVE
         self.phase_step = 0
         self._init_pose = self.get_ee_pose()
@@ -73,7 +75,7 @@ class PickPlaceTeacher(Teacher):
         self.phase_step = 0
         self._retry_count = 0
 
-    def step(self) -> np.ndarray:
+    def step(self) -> dict[str, np.ndarray]:
         self.current_step += 1
         self.phase_step += 1
         try:
@@ -92,7 +94,7 @@ class PickPlaceTeacher(Teacher):
             }[self.phase]()
         except Exception:
             self.state = TeacherState.FAILURE
-            return self.make_action(np.zeros(3))
+            return {self.prefix: self.make_action(np.zeros(3))}
 
     # ── MOVE_ABOVE ────────────────────────────────────
 
@@ -107,7 +109,7 @@ class PickPlaceTeacher(Teacher):
             # self.phase = PickPlaceState.ROTATE
             self.phase = PickPlaceState.DESCEND
             self.phase_step = 0
-        return self.make_action(self._target_pos, self._target_quat)
+        return {self.prefix: self.make_action(self._target_pos, self._target_quat)}
 
     # ── ROTATE ───────────────────────────────────────
 
@@ -131,7 +133,7 @@ class PickPlaceTeacher(Teacher):
             self.phase_step = 0
 
         # 保持位置在上方
-        return self.make_action(self._target_pos, self._target_quat)
+        return {self.prefix: self.make_action(self._target_pos, self._target_quat)}
 
     # ── DESCEND ──────────────────────────────────────
 
@@ -145,7 +147,7 @@ class PickPlaceTeacher(Teacher):
         if np.linalg.norm(self._target_pos - ee[:3]) < 0.003:
             self.phase = PickPlaceState.CLOSE
             self.phase_step = 0
-        return self.make_action(self._target_pos, self._target_quat)
+        return {self.prefix: self.make_action(self._target_pos, self._target_quat)}
 
     # ── CLOSE ────────────────────────────────────────
 
@@ -159,7 +161,7 @@ class PickPlaceTeacher(Teacher):
                 self.phase_step = 0
             else:
                 return self._retry()
-        return self.make_action(ee[:3], ee[3:7], gripper_cmd=0.8)
+        return {self.prefix: self.make_action(ee[:3], ee[3:7], gripper_cmd=0.8)}
 
     # ── LIFT ─────────────────────────────────────────
 
@@ -178,7 +180,7 @@ class PickPlaceTeacher(Teacher):
         if np.linalg.norm(self._target_pos - ee[:3]) < APPROACH_POS:
             self.phase = PickPlaceState.MOVE_TO_PLATE
             self.phase_step = 0
-        return self.make_action(self._target_pos, self._target_quat, gripper_cmd=0.8)
+        return {self.prefix: self.make_action(self._target_pos, self._target_quat, gripper_cmd=0.8)}
 
     # ── MOVE_TO_PLATE ────────────────────────────────
 
@@ -197,7 +199,7 @@ class PickPlaceTeacher(Teacher):
         if np.linalg.norm(target - ee[:3]) < APPROACH_POS:
             self.phase = PickPlaceState.PLACE
             self.phase_step = 0
-        return self.make_action(target, self._target_quat, gripper_cmd=0.8)
+        return {self.prefix: self.make_action(target, self._target_quat, gripper_cmd=0.8)}
 
     # ── PLACE ────────────────────────────────────────
 
@@ -216,7 +218,7 @@ class PickPlaceTeacher(Teacher):
         if np.linalg.norm(target - ee[:3]) < 0.01:
             self.phase = PickPlaceState.OPEN
             self.phase_step = 0
-        return self.make_action(target, self._target_quat, gripper_cmd=0.8)
+        return {self.prefix: self.make_action(target, self._target_quat, gripper_cmd=0.8)}
 
     # ── OPEN ─────────────────────────────────────────
 
@@ -226,7 +228,7 @@ class PickPlaceTeacher(Teacher):
         if self.phase_step > GRIPPER_WAIT:
             self.phase = PickPlaceState.RETREAT
             self.phase_step = 0
-        return self.make_action(ee[:3], ee[3:7], gripper_cmd=0.0)
+        return {self.prefix: self.make_action(ee[:3], ee[3:7], gripper_cmd=0.0)}
 
     # ── RETREAT ──────────────────────────────────────
 
@@ -239,7 +241,7 @@ class PickPlaceTeacher(Teacher):
 
         if np.linalg.norm(self._target_pos - ee[:3]) < APPROACH_POS:
             if self.phase_step < SETTLE_WAIT:
-                return self.make_action(self._target_pos, ee[3:7], gripper_cmd=0.0)
+                return {self.prefix: self.make_action(self._target_pos, ee[3:7], gripper_cmd=0.0)}
 
             cube = self.get_object_pose(CUBE_NAME)
             plate = self.get_object_pose(PLATE_NAME)
@@ -248,7 +250,7 @@ class PickPlaceTeacher(Teacher):
                 self.phase_step = 0
             else:
                 return self._retry()
-        return self.make_action(self._target_pos, self._target_quat, gripper_cmd=0.0)
+        return {self.prefix: self.make_action(self._target_pos, self._target_quat, gripper_cmd=0.0)}
 
     # ── GO_BACK ──────────────────────────────────────
 
@@ -262,7 +264,7 @@ class PickPlaceTeacher(Teacher):
 
         if np.linalg.norm(self._target_pos - ee[:3]) < APPROACH_POS:
             if self.phase_step < SETTLE_WAIT:
-                return self.make_action(self._target_pos, ee[3:7], gripper_cmd=0.0)
+                return {self.prefix: self.make_action(self._target_pos, ee[3:7], gripper_cmd=0.0)}
 
             cube = self.get_object_pose(CUBE_NAME)
             plate = self.get_object_pose(PLATE_NAME)
@@ -271,14 +273,14 @@ class PickPlaceTeacher(Teacher):
                 self.phase_step = 0
             else:
                 return self._retry()
-        return self.make_action(self._target_pos, self._target_quat, gripper_cmd=0.0)
+        return {self.prefix: self.make_action(self._target_pos, self._target_quat, gripper_cmd=0.0)}
 
 
     # ── SUCCESS ──────────────────────────────────────
 
     def _success(self) -> np.ndarray:
         self.state = TeacherState.SUCCESS
-        return self.make_action(np.zeros(3))
+        return {self.prefix: self.make_action(np.zeros(3))}
 
     # ── 夹取姿态 ─────────────────────────────────────
 
@@ -340,7 +342,7 @@ class PickPlaceTeacher(Teacher):
         self._retry_count += 1
         if self._retry_count > MAX_RETRIES:
             self.state = TeacherState.FAILURE
-            return self.make_action(np.zeros(3))
+            return {self.prefix: self.make_action(np.zeros(3))}
         self.phase = PickPlaceState.MOVE_ABOVE
         self.phase_step = 0
-        return self.make_action(np.zeros(3))
+        return {self.prefix: self.make_action(np.zeros(3))}

@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 from typing import Optional
 
@@ -17,6 +16,8 @@ class MujocoInterface:
     """MuJoCo 仿真接口。
 
     封装 model/data/viewer 的生命周期和所有底层 API 调用。
+    viewer 的同步时机由上层 SimulationManager 控制，
+    本层只提供纯物理步进和 viewer 原语。
 
     Usage:
         mj = MujocoInterface("assets/mujoco/scenes/pick_place.xml", render=True)
@@ -30,7 +31,6 @@ class MujocoInterface:
         self,
         scene_path: str | Path,
         render: bool = False,
-        viewer_fps: int = 30,
     ) -> None:
         self._scene_path = Path(scene_path)
 
@@ -43,9 +43,6 @@ class MujocoInterface:
         if render:
             self.viewer = mujoco.viewer.launch_passive(self.model, self.data)
 
-        self._viewer_interval = 1.0 / viewer_fps if viewer_fps > 0 else float("inf")
-        self._last_viewer_sync = 0.0
-
     # ── 仿真控制 ───────────────────────────────────────
 
     def reset(self) -> None:
@@ -54,14 +51,9 @@ class MujocoInterface:
         mujoco.mj_forward(self.model, self.data)
 
     def step(self, n: int = 1) -> None:
-        """推进仿真 n 步。"""
+        """推进仿真 n 步（纯物理步进，不含 viewer 同步）。"""
         for _ in range(n):
             mujoco.mj_step(self.model, self.data)
-        if self.viewer is not None:
-            now = time.perf_counter()
-            if now - self._last_viewer_sync >= self._viewer_interval:
-                self.viewer.sync()
-                self._last_viewer_sync = now
 
     def forward(self) -> None:
         """执行前向动力学/运动学。"""

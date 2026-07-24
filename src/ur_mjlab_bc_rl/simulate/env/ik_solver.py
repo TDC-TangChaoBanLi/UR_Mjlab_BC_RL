@@ -34,17 +34,20 @@ class MinkIK:
         self,
         model: mujoco.MjModel,
         init_qpos: np.ndarray,
+        dt: float = 0.01,
         ee_site_name: str = "_tcp",
         pos_cost: float = 1.0,
         ori_cost: float = 1.0,
+        vel_limit: list[float] = [10.0] * 6,
         posture_cost: float = 1e-3,
-        lm_damping: float = 1e-6,
+        lm_damping: float = 1e-6, # 求解器阻尼系数
         arm_joint_names: list[str] | None = None,
         solver: str = "daqp",
     ) -> None:
         self.model = model
         self._solver = solver
-        self._dt = 0.01
+        self._dt = dt
+        self._vel_limit = vel_limit
 
         if arm_joint_names is None:
             arm_joint_names = list(DEFAULT_ARM_JOINTS)
@@ -73,7 +76,7 @@ class MinkIK:
             mink.ConfigurationLimit(model=model),
             mink.VelocityLimit(
                 model=model,
-                velocities={name: 15.0 for name in arm_joint_names},
+                velocities={name: vlimit for name, vlimit in zip(self.arm_joint_names, self._vel_limit)},
             ),
         ]
 

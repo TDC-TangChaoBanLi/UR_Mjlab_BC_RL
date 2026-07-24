@@ -1,7 +1,7 @@
 """Scripted Teacher 基类。
 
 所有 scripted teacher 都继承此类，提供状态机框架和工具方法。
-输出绝对目标位姿 [x,y,z, qw,qx,qy,qz, gripper_cmd]，
+step() 返回 dict[str, np.ndarray]: {arm_prefix: [x,y,z,qw,qx,qy,qz,gripper_cmd], ...}
 由 IK 求解器转换为关节级控制命令。
 """
 
@@ -42,7 +42,7 @@ class Teacher:
         self.state = TeacherState.RUNNING
         self.current_step = 0
 
-    def step(self) -> np.ndarray:
+    def step(self) -> dict[str, np.ndarray]:
         raise NotImplementedError
 
     def is_success(self) -> bool:
@@ -56,10 +56,10 @@ class Teacher:
 
     # ── 位姿查询 ───────────────────────────────────────
 
-    def get_ee_pose(self) -> np.ndarray:
-        """获取末端执行器位姿 [x,y,z, qw,qx,qy,qz]."""
+    def get_ee_pose(self, site_name: str = "_tcp") -> np.ndarray:
+        """获取指定 site 的末端位姿 [x,y,z, qw,qx,qy,qz]."""
         try:
-            site_id = self.model.site("_tcp").id
+            site_id = self.model.site(site_name).id
             pos = self.data.site_xpos[site_id].copy()
             xmat = self.data.site_xmat[site_id].copy().reshape(3, 3)
             quat = np.zeros(4)

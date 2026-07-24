@@ -26,139 +26,43 @@ def evaluate(
     deterministic: bool = True,
     chunk_size: int = 10,
 ) -> dict:
-    """通用策略评估。
+    """通用策略评估 — 使用 SimulationManager + PolicyController。"""
+    from ur_mjlab_bc_rl.simulate.config_loader import load_scene_config
+    from ur_mjlab_bc_rl.simulate import SimulationManager, PolicyController
 
-    仿真循环：physics(1000Hz) → camera(≈30Hz) → policy(100Hz)。
-    """
-    from ur_mjlab_bc_rl.simulate.env import (
-        MujocoInterface, CameraSensor, ObservationCollector,
-        ResetManager, convert_obs_to_model_input, flatten_state,
-    )
-    from ur_mjlab_bc_rl.simulate.config_loader import (
-        get_sim_params, get_arm_joints, get_gripper_joints,
-        get_camera_name, get_image_size, load_tasks,
-    )
+    config = load_scene_config(task)
+    pdt = config.sim.physics_dt
+    max_time = max_steps * pdt
 
-    if model_type == "act":
-        from ur_mjlab_bc_rl.models.policy.aloha_act_backbone import EnsembleBuffer
-
-    SIM = get_sim_params()
-    ARM = get_arm_joints()
-    GRP = get_gripper_joints()
-    CAM = get_camera_name()
-    ISZ = get_image_size()
-
-    tasks = load_tasks()
-    cfg = tasks.get(task)
-    if cfg is None:
-        raise ValueError(f"Unknown task: {task}")
-
-    sp = PROJECT_ROOT / "assets" / "mujoco" / "scenes" / cfg["scene"]
-    dr = cfg["depth_range"]
-    tid = cfg["task_id"]
+    # 取第一个相机的 depth_range 作为默认值
+    depth_range = config.cameras[0].depth_range if config.cameras else (0.1, 0.8)
 
     model.to(device)
     model.eval()
 
-    state_keys = None if model_type == "bc" else ["arm_joint_pos", "gripper_pos"]
-    action_dim = 7
+    mgr = SimulationManager(config, render=render)
+    controller = PolicyController(
+        model, model_type,
+        device=device,
+        deterministic=deterministic,
+        chunk_size=chunk_size,
+        depth_range=depth_range,
+    )
 
-    mj = MujocoInterface(str(sp), render=render)
-    if render:
-        mj.set_viewer_camera((0.45, 0.0, 0.65), 1.8, -25.0, 130.0)
+    try:
+        lengths: list[int] = []
+        for ep_idx in range(num_episodes):
+            ep = mgr.run_episode(controller, max_time=max_time)
+            steps = len(ep)
+            lengths.append(steps)
 
-    cam = CameraSensor(mj, CAM, ISZ)
-    col = ObservationCollector(mj, cam, ARM, GRP)
-    rm = ResetManager(mj, ARM, GRP)
-
-    a_ids = [mj.get_actuator_id(n + "_ACTUATOR") for n in ARM]
-    g_ids = [mj.get_actuator_id(n + "_ACTUATOR") for n in GRP]
-
-    rewards: list[float] = []
-    lengths: list[int] = []
-    pdt = SIM["physics_dt"]
-    cdt = SIM["camera_dt"]
-    adt = SIM["policy_dt"]
-
-    for ep_idx in range(num_episodes):
-        rm.reset(task=task, randomize_objects=True)
-        col.reset()
-        tp = 0.0
-        tc = 0.0
-        cam.capture()
-
-        ebuf = None
-        if model_type == "act":
-            ebuf = EnsembleBuffer(chunk_size=chunk_size, action_dim=action_dim).to(device)
-
-        total_reward = 0.0
-        steps = 0
-
-        for _ in range(max_steps):
-            mj.step()
-            tp += pdt
-            tc += pdt
-
-            if render and not mj.is_viewer_running():
-                print("\n  窗口关闭")
-                break
-
-            if tc >= cdt:
-                cam.capture()
-                tc -= cdt
-
-            if tp >= adt:
-                tp -= adt
-                obs = col.collect(task_id=tid)
-
-                with torch.no_grad():
-                    if model_type == "bc":
-                        ct, st, tt = convert_obs_to_model_input(
-                            obs, device, state_keys=state_keys,
-                            depth_min=dr[0], depth_max=dr[1],
-                        )
-                        action = model(
-                            {"camera": ct, "actor_state": st, "task": tt},
-                            deterministic=deterministic,
-                        )
-                        anp = action.cpu().numpy().squeeze(0)
-
-                    elif model_type == "act":
-                        rgb = obs["rgb"].astype(np.float32).transpose(2, 0, 1) / 255.0
-                        depth = obs["depth"].astype(np.float32)
-                        if depth.ndim == 2:
-                            depth = depth[None, :, :]
-                        cn = np.concatenate([rgb, depth], axis=0)
-                        ct = torch.from_numpy(cn).unsqueeze(0).to(device)
-                        sn = flatten_state(obs["state"], state_keys=state_keys)
-                        st = torch.from_numpy(sn).unsqueeze(0).to(device)
-                        chunk = model.get_action(st, ct)
-                        ebuf.add(chunk[0])
-                        anp = ebuf.get_action().cpu().numpy()
-
-                anp = np.clip(anp, -6.28, 6.28)
-                ctrl = mj.get_ctrl()
-                for i, aid in enumerate(a_ids):
-                    ctrl[aid] = anp[i] if i < 6 else 0.0
-                for i, aid in enumerate(g_ids):
-                    ctrl[aid] = anp[6 + i] if 6 + i < len(anp) else 0.0
-                mj.set_ctrl(ctrl)
-
-                if model_type == "bc":
-                    col.update_last_action(anp)
-                steps += 1
-
-        lengths.append(steps)
-        rewards.append(total_reward)
-
-        if (ep_idx + 1) % max(1, num_episodes // 10) == 0:
-            print(f"  Ep {ep_idx+1}/{num_episodes}: steps={steps}")
-
-    col.close()
-    mj.close()
+            if (ep_idx + 1) % max(1, num_episodes // 10) == 0:
+                print(f"  Ep {ep_idx+1}/{num_episodes}: steps={steps}")
+    finally:
+        mgr.close()
 
     return {
-        "mean_reward": float(np.mean(rewards)),
+        "mean_reward": 0.0,
         "mean_length": float(np.mean(lengths)),
         "num_episodes": num_episodes,
     }

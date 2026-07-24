@@ -41,8 +41,10 @@ class PegSlotTeacher(Teacher):
     9. SUCCESS:        完成
     """
 
-    def __init__(self, model: mujoco.MjModel, data: mujoco.MjData) -> None:
+    def __init__(self, model: mujoco.MjModel, data: mujoco.MjData,
+                 prefix: str = "") -> None:
         super().__init__(model, data)
+        self.prefix = prefix
         self.phase = PegSlotState.APPROACH
         self.phase_step = 0
         self.insert_steps = 0
@@ -53,7 +55,7 @@ class PegSlotTeacher(Teacher):
         self.phase_step = 0
         self.insert_steps = 0
 
-    def step(self) -> np.ndarray:
+    def step(self) -> dict[str, np.ndarray]:
         self.current_step += 1
         self.phase_step += 1
 
@@ -78,10 +80,10 @@ class PegSlotTeacher(Teacher):
         except Exception:
             self.state = TeacherState.FAILURE
 
-        return self.make_action(
+        return {self.prefix: self.make_action(
             getattr(self, "_action_pos", np.zeros(3)),
             gripper_cmd=getattr(self, "_action_gripper", 0.0),
-        )
+        )}
 
     # ── 各阶段 ─────────────────────────────────────────
 

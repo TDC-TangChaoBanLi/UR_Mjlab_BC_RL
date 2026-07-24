@@ -45,10 +45,10 @@
       <attach model="plate" body="plate" prefix="B_"/>
     </body>
     <!-- UR5e 机械臂 -->
-    <body name="A_ur_mount" pos="-0.6 0 0.7" quat="1 0 0 0">
+    <body name="A_ur_mount" pos="-0.8 0 0.7" quat="1 0 0 0">
       <attach model="ur5_full" body="ur_base_link_inertia" prefix="A_"/>
     </body>
-    <body name="B_ur_mount" pos="0.6 0 0.7" quat="0 0 0 1">
+    <body name="B_ur_mount" pos="0.8 0 0.7" quat="0 0 0 1">
       <attach model="ur5_full" body="ur_base_link_inertia" prefix="B_"/>
     </body>
     <geom name="floor" type="plane" size="0 0 0.05" rgba="0.4 0.4 0.45 1"/>

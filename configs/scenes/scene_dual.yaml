@@ -1,0 +1,50 @@
+
+# ── 机器人 ──
+robot:
+  - name: "A_ur5e" # 机器人名称，仅用于标识，与场景文件无关
+    prefix: "A_" # 机器人前缀，用于修饰 joint \ site 的 name
+    arm_joints:
+      - ur_shoulder_pan_joint
+      - ur_shoulder_lift_joint
+      - ur_elbow_joint
+      - ur_wrist_1_joint
+      - ur_wrist_2_joint
+      - ur_wrist_3_joint
+    gripper_joints:
+      - robotiq_85_left_knuckle_joint
+    ee_site: "_tcp"
+    default_qpos: [0.0, -1.32, 1.32, -1.57, -1.57, 0.0]
+
+  - name: "B_ur5e" # 机器人名称，仅用于标识，与场景文件无关
+    prefix: "B_" # 机器人前缀，用于修饰 joint \ site 的 name
+    arm_joints:
+      - ur_shoulder_pan_joint
+      - ur_shoulder_lift_joint
+      - ur_elbow_joint
+      - ur_wrist_1_joint
+      - ur_wrist_2_joint
+      - ur_wrist_3_joint
+    gripper_joints:
+      - robotiq_85_left_knuckle_joint
+    ee_site: "_tcp"
+    default_qpos: [0.0, -1.32, 1.32, -1.57, -1.57, 0.0]
+
+
+# ── 相机 ──
+camera:
+  - name: "global_realsense_link_CAMERA" # 相机 name ，与场景文件中的 camera name 一致
+    fps: 30                     # 相机帧率 (30 Hz)
+    image_size: [640, 480]      # 相机图像尺寸 (W, H)
+    type: "rgb_depth"           # 相机类型， "gray" | "rgb" | "depth" | "rgb_depth"
+    depth_range: [0.1, 0.8]     # 深度范围 (米)
+  - name: "A_realsense_link_CAMERA"
+    fps: 30
+    image_size: [640, 480]
+    type: "rgb_depth"
+    depth_range: [0.1, 0.8]
+  - name: "B_realsense_link_CAMERA"
+    fps: 30
+    image_size: [640, 480]
+    type: "rgb_depth"
+    depth_range: [0.1, 0.8]
+
