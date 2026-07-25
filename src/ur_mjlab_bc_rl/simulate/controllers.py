@@ -54,11 +54,13 @@ _TEACHER_REGISTRY: dict[str, type] = {}
 def _init_teacher_registry() -> None:
     from .teachers import (
         PickPlaceTeacher, PushTTeacher, PegSlotTeacher,
+        DualPickPlaceTeacher,
     )
     _TEACHER_REGISTRY.update({
         "PickPlaceTeacher": PickPlaceTeacher,
         "PushTTeacher": PushTTeacher,
         "PegSlotTeacher": PegSlotTeacher,
+        "DualPickPlaceTeacher": DualPickPlaceTeacher,
     })
 
 
@@ -82,36 +84,61 @@ class ScriptedTeacherController:
 
         from .env.ik_solver import MinkIK
 
-        self._teachers: dict[str, Any] = {}
-        self._iks: dict[str, MinkIK] = {}
         self._robots = list(config.robots)
         self._policy_dt = config.sim.policy_dt
 
-        for r in self._robots:
-            self._teachers[r.prefix] = tcls(model, data)
-            self._iks[r.prefix] = MinkIK(
-                model, 
-                init_qpos=data.qpos.copy(),
-                dt=self._policy_dt,
-                ee_site_name=r.prefixed_ee_site,
-                vel_limit=[10.0] * 6,
-                arm_joint_names=r.prefixed_arm_joints,
-            )
+        # 多臂 teacher（_is_multi_arm=True）：单实例同时控制多个臂
+        if getattr(tcls, '_is_multi_arm', False):
+            self._multi_arm = True
+            self._teacher: Any = tcls(model, data, prefix="")
+            self._iks: dict[str, MinkIK] = {}
+            for r in self._robots:
+                self._iks[r.prefix] = MinkIK(
+                    model,
+                    init_qpos=data.qpos.copy(),
+                    dt=self._policy_dt,
+                    ee_site_name=r.prefixed_ee_site,
+                    vel_limit=[10.0] * 6,
+                    arm_joint_names=r.prefixed_arm_joints,
+                )
+        else:
+            self._multi_arm = False
+            self._teachers: dict[str, Any] = {}
+            self._iks = {}
+            for r in self._robots:
+                self._teachers[r.prefix] = tcls(model, data, prefix=r.prefix)
+                self._iks[r.prefix] = MinkIK(
+                    model,
+                    init_qpos=data.qpos.copy(),
+                    dt=self._policy_dt,
+                    ee_site_name=r.prefixed_ee_site,
+                    vel_limit=[10.0] * 6,
+                    arm_joint_names=r.prefixed_arm_joints,
+                )
 
     # ── Controller 接口 ────────────────────────────────
 
     def reset(self) -> None:
-        for t in self._teachers.values():
-            t.reset()
+        if self._multi_arm:
+            self._teacher.reset()
+        else:
+            for t in self._teachers.values():
+                t.reset()
 
     def step(self, observation: dict[str, Any]) -> np.ndarray:
         state = observation["state"]
         arm_joint_pos = np.asarray(state["arm_joint_pos"], dtype=np.float64)
 
+        if self._multi_arm:
+            tgt_dict = self._teacher.step()
+        else:
+            tgt_dict = {}
+            for prefix, t in self._teachers.items():
+                tgt_dict.update(t.step())
+
         actions: list[np.ndarray] = []
         offset = 0
         for r in self._robots:
-            tgt_dict = self._teachers[r.prefix].step()
             tgt = tgt_dict[r.prefix]
             target_pose = np.asarray(tgt[:7], dtype=np.float64)
             grip_cmd = float(tgt[7])
@@ -127,9 +154,13 @@ class ScriptedTeacherController:
         return np.concatenate(actions).astype(np.float32)
 
     def is_done(self) -> bool:
+        if self._multi_arm:
+            return self._teacher.is_done()
         return all(t.is_done() for t in self._teachers.values())
 
     def is_success(self) -> bool:
+        if self._multi_arm:
+            return self._teacher.is_success()
         return all(t.is_success() for t in self._teachers.values())
 
 

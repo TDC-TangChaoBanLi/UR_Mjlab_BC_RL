@@ -76,7 +76,7 @@ class ObservationCollector:
 
         images = {}
         for name, cam in self.cameras.items():
-            frame = cam.read(copy=True)
+            frame = cam.read(copy=False)  # 引用相机内部缓冲区，由 Episode 统一拷贝
             images[name] = frame
 
         return {"state": state, "images": images, "task_id": int(task_id)}

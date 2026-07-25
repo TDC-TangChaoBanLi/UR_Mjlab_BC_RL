@@ -12,6 +12,7 @@
 from __future__ import annotations
 
 import time
+from typing import Callable
 
 import numpy as np
 import mujoco
@@ -100,15 +101,18 @@ class SimulationManager:
         controller: Controller,
         *,
         max_time: float | None = None,
+        frame_callback: Callable[[dict, np.ndarray], None] | None = None,
     ) -> Episode:
         """运行一条完整 episode。
 
         Args:
             controller: 实现了 Controller 协议的控制实例。
             max_time: 覆盖配置中的 max_time（None 则用配置值）。
+            frame_callback: 逐帧回调 (obs, action) → None。
+                            提供时不再囤积 Episode，内存占用恒定。
 
         Returns:
-            Episode 容器。若 episode 提前终止（无帧），返回空 Episode。
+            Episode 容器。若 frame_callback 提供，返回空 Episode。
         """
         t_max = max_time if max_time is not None else self._max_time
 
@@ -167,7 +171,11 @@ class SimulationManager:
             action = controller.step(obs)
             self._apply_action(action)
             self._collector.update_last_action(action)
-            ep.add(obs, action, copy_arrays=True)
+
+            if frame_callback is not None:
+                frame_callback(obs, action)
+            else:
+                ep.add(obs, action, copy_arrays=True)
 
             if controller.is_done():
                 break

@@ -16,6 +16,7 @@ from typing import Any, Sequence
 import numpy as np
 
 from lerobot.configs import DepthEncoderConfig
+from lerobot.configs import RGBEncoderConfig
 
 from ..config_loader import CameraConfig
 from .episode import Episode
@@ -55,6 +56,8 @@ class LeRobotDatasetConfig:
     use_rgb: bool = True
     use_depth: bool = True
     streaming_encoding: bool = True
+    vcodec: str = "auto"               # "auto" 优先硬件编码 h264_nvenc ，回退 libsvtav1
+    preset: str | None = None           # h264 预设 (ultrafast/fast/medium)，None=默认
     batch_encoding_size: int = 1
     encoder_threads: int | None = 4
     encoder_queue_maxsize: int = 30
@@ -121,6 +124,12 @@ class LeRobotDatasetWriter:
             depth_max=float(config.cameras[0].depth_range[1]) if config.cameras else 2.0,
         )
 
+        rgb_encoder = RGBEncoderConfig(
+            vcodec=config.vcodec,
+            preset=config.preset,
+            g=None,  # auto GOP，NVENC 需要 g > b_frames+1
+        )
+
         kwargs = dict(
             repo_id=config.repo_id,
             root=root,
@@ -129,6 +138,7 @@ class LeRobotDatasetWriter:
             features=config.build_features(),
             use_videos=True,
             streaming_encoding=bool(config.streaming_encoding),
+            rgb_encoder=rgb_encoder,
             batch_encoding_size=int(config.batch_encoding_size),
             encoder_threads=config.encoder_threads,
             encoder_queue_maxsize=int(config.encoder_queue_maxsize),
@@ -147,29 +157,8 @@ class LeRobotDatasetWriter:
 
         cameras = self.config.cameras
         for obs, action in zip(episode.observations, episode.actions):
-            frame: dict[str, Any] = {}
-
-            # state — 扁平化为 observation.state
-            state_parts = [
-                obs["state"]["arm_joint_pos"],
-                obs["state"]["gripper_pos"],
-                obs["state"]["last_action"],
-            ]
-            frame["observation.state"] = np.concatenate(
-                [np.asarray(p, dtype=np.float32).ravel() for p in state_parts])
-
-            # images — 每个相机独立
-            images = obs.get("images", {})
-            for c in cameras:
-                if c.name in images:
-                    frame[f"observation.images.{c.name}.rgb"] = \
-                        images[c.name]["rgb"]
-                    frame[f"observation.images.{c.name}.depth"] = \
-                        images[c.name]["depth"][np.newaxis, ...]  # (H,W) → (1,H,W)
-
-            frame["action"] = action.astype(np.float32)
+            frame = self._format_frame(obs, action, cameras)
             frame["task"] = task_label
-
             with _quiet_stderr():
                 self.dataset.add_frame(frame)
 
@@ -177,6 +166,62 @@ class LeRobotDatasetWriter:
             self.dataset.save_episode()
 
         self.episodes_written += 1
+
+    def make_stream_callback(self):
+        """创建流式写入回调 + flush/discard。
+
+        回调将帧缓存在本地列表，不直接写入 LeRobot。
+        返回 (callback, flush, discard) 三元组：
+          - callback(obs, action): 缓存一帧
+          - flush(task_label):     将缓存帧写入 LeRobot 并 save_episode
+          - discard():              丢弃缓存帧（失败 episode 用）
+
+        避免失败帧污染数据集，且内存占用恒定（~几 MB）。
+        """
+        cameras = self.config.cameras
+        buffer: list[dict[str, Any]] = []
+
+        def _callback(obs, action):
+            frame = self._format_frame(obs, action, cameras)
+            buffer.append(frame)
+
+        def _flush(task_label: str = ""):
+            if not buffer:
+                return
+            for frame in buffer:
+                frame["task"] = task_label
+                with _quiet_stderr():
+                    self.dataset.add_frame(frame)
+            with _quiet_stderr():
+                self.dataset.save_episode()
+            self.episodes_written += 1
+            buffer.clear()
+
+        def _discard():
+            buffer.clear()
+
+        return _callback, _flush, _discard
+
+    @staticmethod
+    def _format_frame(obs, action, cameras) -> dict[str, Any]:
+        """将 (obs, action) 格式化为 LeRobot add_frame 所需的 dict。"""
+        state_parts = [
+            obs["state"]["arm_joint_pos"],
+            obs["state"]["gripper_pos"],
+            obs["state"]["last_action"],
+        ]
+        frame: dict[str, Any] = {
+            "observation.state": np.concatenate(
+                [np.asarray(p, dtype=np.float32).ravel() for p in state_parts]),
+            "action": np.asarray(action, dtype=np.float32).ravel(),
+        }
+        images = obs.get("images", {})
+        for c in cameras:
+            if c.name in images:
+                frame[f"observation.images.{c.name}.rgb"] = images[c.name]["rgb"]
+                frame[f"observation.images.{c.name}.depth"] = \
+                    images[c.name]["depth"][np.newaxis, ...]
+        return frame
 
     def finalize(self) -> str:
         if not self._closed:

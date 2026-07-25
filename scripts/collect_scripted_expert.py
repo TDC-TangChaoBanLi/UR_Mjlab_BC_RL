@@ -7,6 +7,7 @@ import argparse
 import logging
 import os
 import sys
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -75,19 +76,43 @@ def main() -> None:
         max_attempts = config.collection.max_attempts
         total_attempts = 0
 
+        # 流式回调：本地缓冲，成功时后台编码（与下个 episode 仿真并行）
+        stream_cb, flush_ep, discard_ep = writer.make_stream_callback()
+
+        flush_thread: threading.Thread | None = None
+
         while collected < args.episodes:
+            # 等待上一个 episode 的编码完成
+            if flush_thread is not None:
+                flush_thread.join()
+                flush_thread = None
+
             success = False
             for _ in range(max_attempts):
-                ep = mgr.run_episode(controller)
+                mgr.run_episode(controller, frame_callback=stream_cb)
                 total_attempts += 1
-                if controller.is_success() and len(ep) > 0:
-                    writer.append_episode(ep, task_label=task.name)
+                if controller.is_success():
+                    # 后台线程编码，不阻塞下一个 episode 仿真
+                    flush_thread = threading.Thread(
+                        target=flush_ep, args=(task.name,), daemon=True,
+                    )
+                    flush_thread.start()
                     collected += 1
                     success = True
-                    print(f"  ✓ {collected}/{args.episodes} ({len(ep)} fr)")
+                    print(f"  ✓ {collected}/{args.episodes}")
                     break
+                else:
+                    discard_ep()
+                    print(f"  ✗ 尝试 {total_attempts} 失败，重试…")
             if not success:
                 print(f"  ✗ 连续 {max_attempts} 次失败，跳过")
+
+        # 等待最后一个 episode 编码完成
+        if flush_thread is not None:
+            flush_thread.join()
+    except KeyboardInterrupt:
+        print("\n  中断：丢弃未完成的 episode…")
+        discard_ep()  # 丢弃中断时的部分帧
     finally:
         mgr.close()
 

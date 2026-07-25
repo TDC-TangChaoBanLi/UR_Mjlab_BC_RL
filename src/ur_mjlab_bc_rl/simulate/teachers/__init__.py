@@ -5,6 +5,7 @@ from .base import TeacherState as TeacherState
 from .pick_place_teacher import PickPlaceTeacher as PickPlaceTeacher
 from .push_t_teacher import PushTTeacher as PushTTeacher
 from .peg_slot_teacher import PegSlotTeacher as PegSlotTeacher
+from .dual_pick_place_teacher import DualPickPlaceTeacher as DualPickPlaceTeacher
 
 __all__ = [
     "Teacher",
@@ -12,4 +13,5 @@ __all__ = [
     "PickPlaceTeacher",
     "PushTTeacher",
     "PegSlotTeacher",
+    "DualPickPlaceTeacher",
 ]

@@ -1,0 +1,120 @@
+
+# 记录频率
+recode_hz: 30.0
+
+state:
+  # recode_scale (int) 记录频率缩放因子，在外侧记录周期内记录 recode_scale 次状态
+  # 例如：recode_hz = 30.0，recode_scale = 3，记录周期为 recode_hz * recode_scale = 90.0
+  # 在一个周期内的同一个状态的多帧数据
+  recode_scale: 1 
+  joint: # 关节角： 位置 速度 力矩
+    recode_scale: 3 # 多级嵌套则连乘
+    position: # dim: 1*n
+      recode_scale: 1 # 多级嵌套则连乘
+      joint_names:
+        - arm_A_ur_shoulder_pan_joint
+        - arm_A_ur_shoulder_lift_joint
+        - arm_A_ur_elbow_joint
+        - arm_A_ur_wrist_1_joint
+        - arm_A_ur_wrist_2_joint
+        - arm_A_ur_wrist_3_joint
+        - arm_A_robotiq_85_left_knuckle_joint
+        - arm_B_ur_shoulder_pan_joint
+        - arm_B_ur_shoulder_lift_joint
+        - arm_B_ur_elbow_joint
+        - arm_B_ur_wrist_1_joint
+        - arm_B_ur_wrist_2_joint
+        - arm_B_ur_wrist_3_joint
+        - arm_B_robotiq_85_left_knuckle_joint
+      # velocity: # dim: 1*n
+      #   joint_names: []
+      # effort: # dim: 1*n
+      #   joint_names: []
+
+  sensor: # 传感器： 力 力矩 陀螺仪 加速度
+    recode_scale: 3 # 多级嵌套则连乘
+    force: # dim: 3*n
+      recode_scale: 1 # 多级嵌套则连乘
+      sensor_names:
+        - ur_ft_frame_SENSOR_FORCE
+    torque: # dim: 3*n
+      sensor_names:
+        - ur_ft_frame_SENSOR_TORQUE
+    # gyro: # dim: 3*n
+    #   sensor_names:
+    #     - ur_ft_frame_SENSOR_GYRO
+    # accelerometer: # dim: 3*n
+    #   sensor_names:
+    #     - ur_ft_frame_SENSOR_ACC
+
+  # frame: # 坐标： 位置 欧拉角 四元数
+  #   position: # dim: 3*n
+  #     frame_site: world # 参考系：world / other_site_name
+  #     site_names:
+  #       - arm_A__tcp
+  #       - arm_B__tcp
+  #   euler: # dim: 3*n
+  #     frame_site: world
+  #     site_names:
+  #       - arm_A__tcp
+  #       - arm_B__tcp
+  #   # quat: # dim: 4*n
+  #   #   frame_site: world
+  #   #   site_names:
+  #   #     - arm_A__tcp
+  #   #     - arm_B__tcp
+
+  camera: # 相机： 涉及到渲染参数，定义到 configs/scenes/scene_dual.yaml 中
+    recode_scale: 1 # 多级嵌套则连乘
+    scene_config_file: configs/scenes/scene_dual.yaml # 包含相机参数的场景配置文件
+
+
+action:
+  recode_scale: 3 # (int) 记录频率缩放因子，在外侧记录周期内记录 recode_scale 次动作
+  joint: # 关节角： 位置 速度 力矩
+    recode_scale: 1 # 多级嵌套则连乘
+    position: # dim: 1*n
+      recode_scale: 1 # 多级嵌套则连乘
+      joint_names:
+        - arm_A_ur_shoulder_pan_joint
+        - arm_A_ur_shoulder_lift_joint
+        - arm_A_ur_elbow_joint
+        - arm_A_ur_wrist_1_joint
+        - arm_A_ur_wrist_2_joint
+        - arm_A_ur_wrist_3_joint
+        - arm_A_robotiq_85_left_knuckle_joint
+        - arm_B_ur_shoulder_pan_joint
+        - arm_B_ur_shoulder_lift_joint
+        - arm_B_ur_elbow_joint
+        - arm_B_ur_wrist_1_joint
+        - arm_B_ur_wrist_2_joint
+        - arm_B_ur_wrist_3_joint
+        - arm_B_robotiq_85_left_knuckle_joint
+    # velocity: # dim: 1*n
+    #   joint_names: []
+    # effort: # dim: 1*n
+    #   joint_names: []
+  # tcp: 
+  #   recode_scale: 1 # 多级嵌套则连乘
+  #   position: # dim: 3*n
+  #     recode_scale: 1 # 多级嵌套则连乘
+  #     type: absolute # absolute 绝对位置 / relative 相对位置变化 / velocity 速度自动积分
+  #     frame_site: world # type=absolute 时，参考系为 world/other_site_name
+  #     site_names:
+  #       - arm_A__tcp
+  #       - arm_B__tcp
+  #   euler: # dim: 3*n
+  #     recode_scale: 1 # 多级嵌套则连乘
+  #     type: absolute # absolute 绝对欧拉角 / relative 相对欧拉角变化 / velocity 速度自动积分
+  #     frame_site: world # type=absolute 时，参考系为 world/other_site_name
+  #     site_names:
+  #       - arm_A__tcp
+  #       - arm_B__tcp
+  #   # quat: # dim: 4*n
+  #   #   recode_scale: 1 # 多级嵌套则连乘
+  #   #   type: absolute # absolute 绝对四元数 / relative 相对四元数变化 / velocity 速度自动积分
+  #   #   frame_site: world # type=absolute 时，参考系为 world/other_site_name
+  #   #   site_names:
+  #   #     - arm_A__tcp
+  #   #     - arm_B__tcp
+
