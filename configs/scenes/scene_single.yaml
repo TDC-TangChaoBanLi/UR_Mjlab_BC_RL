@@ -21,6 +21,5 @@ camera:
     fps: 30                     # 相机帧率 (30 Hz)
     image_size: [320, 240]      # 相机图像尺寸 (W, H)
     type: "rgb_depth"           # 相机类型， "gray" | "rgb" | "depth" | "rgb_depth"
-    depth_range: [0.1, 0.8]     # 深度范围 (米)
 
 

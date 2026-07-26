@@ -1,0 +1,36 @@
+# 记录频率
+recode_hz: 30.0
+
+state:
+  recode_scale: 1
+  joint:
+    recode_scale: 3
+    position:
+      recode_scale: 1
+      joint_names:
+        - ur_shoulder_pan_joint
+        - ur_shoulder_lift_joint
+        - ur_elbow_joint
+        - ur_wrist_1_joint
+        - ur_wrist_2_joint
+        - ur_wrist_3_joint
+        - robotiq_85_left_knuckle_joint
+  camera:
+    recode_scale: 1
+    scene_config_file: configs/scenes/scene_single.yaml
+    depth_range: [0.1, 2.0]
+
+action:
+  recode_scale: 1
+  joint:
+    recode_scale: 3
+    position:
+      recode_scale: 1
+      joint_names:
+        - ur_shoulder_pan_joint
+        - ur_shoulder_lift_joint
+        - ur_elbow_joint
+        - ur_wrist_1_joint
+        - ur_wrist_2_joint
+        - ur_wrist_3_joint
+        - robotiq_85_left_knuckle_joint

@@ -67,19 +67,33 @@ class LeRobotDatasetConfig:
     def resolved_root(self) -> Path:
         return Path(self.root).expanduser().resolve()
 
-    def build_features(self) -> dict[str, dict[str, Any]]:
-        features: dict[str, dict[str, Any]] = {
-            "observation.state": {
-                "dtype": "float32",
-                "shape": (int(self.state_dim),),
-                "names": [f"s{i}" for i in range(int(self.state_dim))],
-            },
-            "action": {
-                "dtype": "float32",
-                "shape": (int(self.action_dim),),
-                "names": [f"a{i}" for i in range(int(self.action_dim))],
-            },
-        }
+    def build_features(self, dataset_cfg=None) -> dict[str, dict[str, Any]]:
+        """构建 LeRobot features dict。
+
+        多速率模式：每个数据源独立 feature，保留真实子采样数。
+          例：observation.state.joint_position → (3, 14)
+              observation.state.sensor_force  → (2, 3)
+        """
+        features: dict[str, dict[str, Any]] = {}
+
+        if dataset_cfg is not None:
+            for src in dataset_cfg.sources:
+                # "state.joint.position" → "observation.state.joint.position"
+                key = src.name
+                if src.name.startswith("state."):
+                    key = "observation." + key
+                features[key] = {
+                    "dtype": "float32",
+                    "shape": (src.num_subs, src.dim_per_sub),
+                    "names": src.source_names if src.source_names else None,
+                }
+        else:
+            features["observation.state"] = {
+                "dtype": "float32", "shape": (int(self.state_dim),), "names": None,
+            }
+            features["action"] = {
+                "dtype": "float32", "shape": (int(self.action_dim),), "names": None,
+            }
         for c in self.cameras:
             H, W = int(c.height), int(c.width)
             prefix = f"observation.images.{c.name}"
@@ -112,6 +126,7 @@ class LeRobotDatasetWriter:
     @classmethod
     def create_new(
         cls, config: LeRobotDatasetConfig, *, overwrite: bool = False,
+        dataset_cfg=None,
     ) -> "LeRobotDatasetWriter":
         from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
@@ -119,9 +134,15 @@ class LeRobotDatasetWriter:
         if overwrite and root.exists():
             shutil.rmtree(root)
 
+        depth_min, depth_max = (0.1, 2.0)
+        if dataset_cfg is not None and dataset_cfg.depth_range:
+            depth_min, depth_max = dataset_cfg.depth_range
+        elif config.cameras:
+            depth_min = float(config.cameras[0].depth_range[0])
+            depth_max = float(config.cameras[0].depth_range[1])
         depth_encoder = DepthEncoderConfig(
-            depth_min=float(config.cameras[0].depth_range[0]) if config.cameras else 0.1,
-            depth_max=float(config.cameras[0].depth_range[1]) if config.cameras else 2.0,
+            depth_min=depth_min,
+            depth_max=depth_max,
         )
 
         rgb_encoder = RGBEncoderConfig(
@@ -135,7 +156,7 @@ class LeRobotDatasetWriter:
             root=root,
             fps=int(config.fps),
             robot_type=config.robot_type,
-            features=config.build_features(),
+            features=config.build_features(dataset_cfg),
             use_videos=True,
             streaming_encoding=bool(config.streaming_encoding),
             rgb_encoder=rgb_encoder,
@@ -203,18 +224,23 @@ class LeRobotDatasetWriter:
         return _callback, _flush, _discard
 
     @staticmethod
-    def _format_frame(obs, action, cameras) -> dict[str, Any]:
-        """将 (obs, action) 格式化为 LeRobot add_frame 所需的 dict。"""
-        state_parts = [
-            obs["state"]["arm_joint_pos"],
-            obs["state"]["gripper_pos"],
-            obs["state"]["last_action"],
-        ]
-        frame: dict[str, Any] = {
-            "observation.state": np.concatenate(
-                [np.asarray(p, dtype=np.float32).ravel() for p in state_parts]),
-            "action": np.asarray(action, dtype=np.float32).ravel(),
-        }
+    def _format_frame(obs, _action, cameras) -> dict[str, Any]:
+        """将多速率 obs dict 格式化为 LeRobot add_frame 所需的 dict。
+
+        每个数据源独立点分隔 key：
+          "observation.state.joint.position": (3, 14)
+          "observation.state.sensor.force":   (2, 6)
+          "action.joint.position":            (3, 14)
+        """
+        obs_state = obs.get("state", {})
+        obs_action = obs.get("action", {})
+        frame: dict[str, Any] = {}
+
+        for src_name, arr in obs_state.items():
+            frame[f"observation.{src_name}"] = arr.astype(np.float32)
+        for src_name, arr in obs_action.items():
+            frame[src_name] = arr.astype(np.float32)
+
         images = obs.get("images", {})
         for c in cameras:
             if c.name in images:

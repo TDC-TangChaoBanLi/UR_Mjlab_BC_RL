@@ -191,3 +191,10 @@ class MujocoInterface:
         quat = np.zeros(4)
         mujoco.mju_mat2Quat(quat, xmat.ravel())
         return np.concatenate([pos, quat])
+
+    def get_sensor_data(self, sensor_name: str) -> np.ndarray:
+        """获取传感器数据。"""
+        sensor_id = self.model.sensor(sensor_name).id
+        adr = self.model.sensor_adr[sensor_id]
+        dim = self.model.sensor_dim[sensor_id]
+        return self.data.sensordata[adr:adr + dim].copy()

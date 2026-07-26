@@ -23,6 +23,7 @@ from .env import (
     MujocoInterface, CameraSensor, ObservationCollector,
     ResetManager,
 )
+from .dataset_config import DatasetConfig
 from .dataset_writer import Episode
 
 VIEWER_FPS = 30
@@ -40,6 +41,7 @@ class SimulationManager:
         config: SceneConfig,
         *,
         render: bool = False,
+        dataset_cfg: DatasetConfig,
     ) -> None:
         self._config = config
         self._render = render
@@ -57,7 +59,9 @@ class SimulationManager:
 
         self._collector = ObservationCollector(
             self._mj, self._cameras, config.robots,
+            dataset_cfg=dataset_cfg,
         )
+        self._dataset_cfg = dataset_cfg
         self._reset_mgr = ResetManager(
             self._mj, config.robots, config.task.objects,
         )
@@ -102,56 +106,36 @@ class SimulationManager:
         *,
         max_time: float | None = None,
         frame_callback: Callable[[dict, np.ndarray], None] | None = None,
-    ) -> Episode:
-        """运行一条完整 episode。
-
-        Args:
-            controller: 实现了 Controller 协议的控制实例。
-            max_time: 覆盖配置中的 max_time（None 则用配置值）。
-            frame_callback: 逐帧回调 (obs, action) → None。
-                            提供时不再囤积 Episode，内存占用恒定。
-
-        Returns:
-            Episode 容器。若 frame_callback 提供，返回空 Episode。
-        """
+    ) -> int:
+        """运行一条完整 episode，返回采集的帧数。"""
         t_max = max_time if max_time is not None else self._max_time
+        dcfg = self._dataset_cfg
+        frame_dt = dcfg.frame_interval_s
+        frame_count = 0
 
-        # ── 重置 ───────────────────────────────────────
+        # ── 重置 ──
         self._reset_mgr.reset(randomize_objects=True)
         controller.reset()
         self._collector.reset()
 
-        for cam in self._cameras.values():
-            cam.capture()
-
-        ep = Episode()
-
-        # ── 时序变量 ───────────────────────────────────
-        t_sim = 0.0
-        t_policy = 0.0
-        t_viewer = 0.0
-        last_capture: dict[str, float] = {name: 0.0 for name in self._cameras}
+        t_sim = t_policy = t_frame = t_sample = t_viewer = 0.0
         wall_start = time.perf_counter()
+        sample_dt = dcfg.sample_interval_s  # 1 / (recode_hz * max_scale)
 
-        # ── 主循环 ─────────────────────────────────────
         while t_sim < t_max:
             self._mj.step()
             t_sim += self._pdt
             t_policy += self._pdt
+            t_frame += self._pdt
+            t_sample += self._pdt
             t_viewer += self._pdt
 
-            # 各相机按自身 dt 独立采集
-            for c_cfg in self._config.cameras:
-                cam = self._cameras[c_cfg.name]
-                if t_sim - last_capture[c_cfg.name] >= c_cfg.dt:
-                    cam.capture()
-                    last_capture[c_cfg.name] = t_sim
+            # 子采样步进（recode_hz × max_scale Hz）
+            if t_sample >= sample_dt:
+                t_sample -= sample_dt
+                self._collector.sample()
 
-            # 等待 policy 步进
-            if t_policy < self._adt:
-                continue
-
-            # viewer wall-clock 同步
+            # viewer
             if self._render:
                 target = wall_start + t_sim
                 now = time.perf_counter()
@@ -160,27 +144,33 @@ class SimulationManager:
                 if t_viewer >= self._viewer_interval:
                     self._mj.sync_viewer()
                     t_viewer -= self._viewer_interval
-
                 if not self._mj.is_viewer_running():
                     break
 
+            # 帧边界：捕获相机 + 打包 + 回调
+            if t_frame >= frame_dt and self._collector.is_ready():
+                t_frame -= frame_dt
+                obs = self._collector.flush(task_id=self._config.task.task_id)
+                frame_count += 1
+                if frame_callback:
+                    frame_callback(obs, None)
+
+            # policy 步进
+            if t_policy < self._adt:
+                continue
             t_policy -= self._adt
 
-            # 采集观测 → 控制器 → 应用动作 → 记录
-            obs = self._collector.collect(task_id=self._config.task.task_id)
-            action = controller.step(obs)
+            action = controller.step({
+                "state": {"arm_joint_pos": self._collector.get_joint_positions()},
+                "task_id": self._config.task.task_id,
+            })
             self._apply_action(action)
             self._collector.update_last_action(action)
-
-            if frame_callback is not None:
-                frame_callback(obs, action)
-            else:
-                ep.add(obs, action, copy_arrays=True)
 
             if controller.is_done():
                 break
 
-        return ep
+        return frame_count
 
     def close(self) -> None:
         """释放所有子组件资源。"""

@@ -36,15 +36,12 @@ camera:
     fps: 30                     # 相机帧率 (30 Hz)
     image_size: [640, 480]      # 相机图像尺寸 (W, H)
     type: "rgb_depth"           # 相机类型， "gray" | "rgb" | "depth" | "rgb_depth"
-    depth_range: [0.1, 0.8]     # 深度范围 (米)
   - name: "A_realsense_link_CAMERA"
     fps: 30
     image_size: [640, 480]
     type: "rgb_depth"
-    depth_range: [0.1, 0.8]
   - name: "B_realsense_link_CAMERA"
     fps: 30
     image_size: [640, 480]
     type: "rgb_depth"
-    depth_range: [0.1, 0.8]
 
