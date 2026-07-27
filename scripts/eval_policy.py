@@ -95,7 +95,7 @@ def main() -> None:
         print("  类型: ACT (DETRVAE)")
         from ur_mjlab_bc_rl.config_loader import load_aloha_act_model
         mcfg = ckpt.get("model_cfg") or load_aloha_act_model()
-        from ur_mjlab_bc_rl.models.policy.aloha_act_backbone import build_detr_vae
+        from ur_mjlab_bc_rl.models.ALHAH_ACT.backbone import build_detr_vae
         model = build_detr_vae(mcfg)
         sk = "model_state_dict" if "model_state_dict" in ckpt else "actor_state_dict"
         model.load_state_dict(ckpt[sk])
@@ -109,7 +109,7 @@ def main() -> None:
         print("  类型: BC (UR5MultimodalBackbone)")
         from ur_mjlab_bc_rl.config_loader import load_multimodal_model
         mcfg = ckpt.get("model_cfg") or load_multimodal_model()
-        from ur_mjlab_bc_rl.models.policy.multimodal_backbone import UR5MultimodalBackbone
+        from ur_mjlab_bc_rl.models.Test_Multimodal.backbone import UR5MultimodalBackbone
         model = UR5MultimodalBackbone(model_cfg=mcfg)
         model.load_state_dict(ckpt["actor_state_dict"])
         deterministic = not args.no_deterministic

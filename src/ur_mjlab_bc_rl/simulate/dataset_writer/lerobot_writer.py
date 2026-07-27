@@ -60,7 +60,7 @@ class LeRobotDatasetConfig:
     preset: str | None = None           # h264 预设 (ultrafast/fast/medium)，None=默认
     batch_encoding_size: int = 1
     encoder_threads: int | None = 4
-    encoder_queue_maxsize: int = 30
+    encoder_queue_maxsize: int = 90
     image_writer_threads: int = 0
     image_writer_processes: int = 0
 
@@ -230,7 +230,7 @@ class LeRobotDatasetWriter:
         每个数据源独立点分隔 key：
           "observation.state.joint.position": (3, 14)
           "observation.state.sensor.force":   (2, 6)
-          "action.joint.position":            (3, 14)
+          "action":                           (3, 14)
         """
         obs_state = obs.get("state", {})
         obs_action = obs.get("action", {})
@@ -239,7 +239,9 @@ class LeRobotDatasetWriter:
         for src_name, arr in obs_state.items():
             frame[f"observation.{src_name}"] = arr.astype(np.float32)
         for src_name, arr in obs_action.items():
-            frame[src_name] = arr.astype(np.float32)
+            # LeRobot 要求统一 key "action"（不是 "action.joint.position"）
+            key = "action" if src_name.startswith("action.") else src_name
+            frame[key] = arr.astype(np.float32)
 
         images = obs.get("images", {})
         for c in cameras:

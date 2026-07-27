@@ -43,7 +43,7 @@ from mjlab.rl import (
     RslRlPpoAlgorithmCfg,
 )
 
-from ..models.policy.rsl_adapter import UR5MultimodalModelCfg
+from ..models.Test_Multimodal.rsl_adapter import UR5MultimodalModelCfg
 
 from .cfg.constants import (
     UR5E_ENTITY_NAME, CUBE_ENTITY_NAME, PLATE_ENTITY_NAME,

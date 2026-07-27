@@ -38,7 +38,7 @@ from torch.utils.data.distributed import DistributedSampler
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-from ur_mjlab_bc_rl.models.policy.aloha_act_backbone import DETRVAE, build_detr_vae
+from ur_mjlab_bc_rl.models.ALHAH_ACT.backbone import DETRVAE, build_detr_vae
 
 
 # 单机双卡默认不使用 IB/RoCE，避免 NCCL 误选 irdma/RoCE 网卡

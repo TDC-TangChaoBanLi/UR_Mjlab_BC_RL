@@ -100,7 +100,7 @@ python scripts/collect_keyboard_expert.py --task pick_place
 
 ```bash
 # 安装策略插件
-pip install -e src/ur_mjlab_bc_rl/imitation/lerobot_policy/ur5_multimodal/
+uv pip install -e src/ur_mjlab_bc_rl/imitation/lerobot_policy/ur5_multimodal/
 
 # 单卡训练
 lerobot-train \

@@ -197,7 +197,7 @@ class PolicyController:
 
     def reset(self) -> None:
         if self._model_type == "act" and self._chunk_size > 0:
-            from ur_mjlab_bc_rl.models.policy.aloha_act_backbone import EnsembleBuffer
+            from ur_mjlab_bc_rl.models.ALHAH_ACT.backbone import EnsembleBuffer
             self._ensemble_buffer = EnsembleBuffer(
                 chunk_size=self._chunk_size,
                 action_dim=7,

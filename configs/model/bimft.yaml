@@ -1,0 +1,80 @@
+# ═══════════════════════════════════════════════════════════
+# BiMFT — Bimanual Multimodal Fusion Transformer 策略配置
+# ═══════════════════════════════════════════════════════════
+#
+# 输入:
+#   左腕 RGB-D:  4 帧 × 30 Hz
+#   右腕 RGB-D:  4 帧 × 30 Hz
+#   全局 RGB-D:  4 帧 × 30 Hz
+#   左臂关节+夹爪: 12 采样 × 90 Hz (每相机周期 3 个采样)
+#   右臂关节+夹爪: 12 采样 × 90 Hz
+#   左末端力/力矩: 12 采样 × 90 Hz
+#   右末端力/力矩: 12 采样 × 90 Hz
+#
+# 输出: 左右各 K=30 × 7 维动作块
+
+# ── 输入维度 ─────────────────────────────────────────────
+input:
+  image_channels: 4           # RGB(3) + Depth(1)
+  image_height: 460
+  image_width: 640
+  vision_history: 4           # 4 帧，约 0.1s
+  joint_high_rate: 3          # 每相机帧对应的关节采样数 R_q
+  force_high_rate: 3          # 每相机帧对应的力觉采样数 R_f
+
+  joint_dim: 6                # 6 个关节角
+  gripper_state_dim: 1        # 1 个夹爪位置
+  wrench_dim: 6               # 6 维力/力矩
+
+# ── Token 维度 ────────────────────────────────────────────
+token:
+  d_model: 512                # 统一 token 维度
+  n_heads: 8                  # 注意力头数
+  dim_feedforward: 2048       # FFN 中间维度 (4×d_model)
+  dropout: 0.1                # Dropout 概率
+
+# ── 视觉编码器 ───────────────────────────────────────────
+vision:
+  pretrained_rgb: true        # ImageNet 预训练权重
+  grid_h: 15                  # 输出空间网格高度
+  grid_w: 20                  # 输出空间网格宽度 (共 300 个 token)
+  share_global_backbone: false # 全局相机是否与腕相机共享 backbone
+
+# ── 高频状态编码 ─────────────────────────────────────────
+state:
+  joint_encoder_layers: 2     # 关节编码 Transformer 层数
+  force_encoder_layers: 2     # 力觉编码 Transformer 层数
+
+# ── 单时刻多模态融合 ─────────────────────────────────────
+slot_fusion:
+  layers: 2                   # 双向 Cross-Attention 层数
+  joint_summary_tokens: 1     # 关节摘要 token 数 N_q
+  force_summary_tokens: 1     # 力觉摘要 token 数 N_f
+
+# ── 四帧时序融合 ─────────────────────────────────────────
+temporal:
+  arm_layers: 2               # 单臂时序 Cross-Attention 层数
+  global_layers: 2            # 全局视觉时序 Cross-Attention 层数
+
+# ── 双臂全局融合 ─────────────────────────────────────────
+bimanual:
+  arm_summary_tokens: 1       # 单臂摘要 token 数（基线固定为 1）
+  global_queries_per_arm: 4   # 每臂全局查询数
+  coordination_queries: 8     # 双臂关系查询数
+  coordination_layers: 4      # 协调 Transformer 层数
+  reinjection_layers: 1       # 回注入 Cross-Attention 层数
+
+# ── 动作解码 ─────────────────────────────────────────────
+action:
+  chunk_size: 30              # 动作块长度 K
+  action_dim: 7               # 单臂动作维度 (6 joint + 1 gripper)
+  decoder_layers: 4           # 解码器层数
+  head_hidden_dim: 256        # 动作 MLP head 隐藏层维度
+
+# ── 损失 ─────────────────────────────────────────────────
+loss:
+  huber_delta: 1.0            # Huber loss delta
+  smoothness_weight: 0.05     # 平滑损失权重
+
+# ── 其他 ─────────────────────────────────────────────────
+max_parameters: 300_000_000   # 参数上限

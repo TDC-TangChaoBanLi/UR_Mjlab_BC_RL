@@ -85,7 +85,7 @@ class TestVisualEncoderCNN:
 
     @pytest.fixture
     def encoder(self):
-        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.vision_factory import build_visual_encoder
         return build_visual_encoder({
             "type": "rescnn",
             "in_channels": 4,
@@ -102,7 +102,7 @@ class TestVisualEncoderCNN:
 
     def test_variable_size_plain(self):
         """测试普通模式可变图像尺寸。"""
-        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.vision_factory import build_visual_encoder
         encoder = build_visual_encoder({
             "type": "rescnn",
             "in_channels": 4,
@@ -125,7 +125,7 @@ class TestVisualEncoderCNN:
     @pytest.fixture
     def residual_encoder_vector(self):
         """240×320 → 512-dim vector 的残差 CNN。"""
-        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.vision_factory import build_visual_encoder
         return build_visual_encoder({
             "type": "rescnn",
             "in_channels": 4,
@@ -163,7 +163,7 @@ class TestVisualEncoderCNN:
     @pytest.fixture
     def residual_encoder_tokens(self):
         """无 head → 输出空间特征 tokens。"""
-        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.vision_factory import build_visual_encoder
         return build_visual_encoder({
             "type": "rescnn",
             "in_channels": 4,
@@ -195,7 +195,7 @@ class TestVisualEncoderCNN:
 
     def test_residual_no_stem_no_head(self):
         """最简残差模式：无 stem + 无 head → tokens。"""
-        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.vision_factory import build_visual_encoder
         encoder = build_visual_encoder({
             "type": "rescnn",
             "in_channels": 4,
@@ -218,7 +218,7 @@ class TestVisualEncoderCNN:
 
     def test_residual_variable_size(self):
         """残差模式支持可变尺寸。"""
-        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.vision_factory import build_visual_encoder
         encoder = build_visual_encoder({
             "type": "rescnn",
             "in_channels": 4,
@@ -254,7 +254,7 @@ class TestVisualEncoderCNN:
 
     def test_factory_residual(self):
         """通过 build_visual_encoder 工厂创建残差 CNN。"""
-        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.vision_factory import build_visual_encoder
         cfg = {
             "type": "rescnn",
             "in_channels": 4,
@@ -278,7 +278,7 @@ class TestVisualEncoderCNN:
 
     def test_factory_plain_backward_compat(self):
         """工厂 — 无 stages 时回退到普通 CNN。"""
-        from ur_mjlab_bc_rl.models.vision.encoder_factory import build_visual_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.vision_factory import build_visual_encoder
         cfg = {
             "type": "rescnn",
             "in_channels": 4,
@@ -297,7 +297,7 @@ class TestMLPStateEncoder:
 
     @pytest.fixture
     def encoder(self):
-        from ur_mjlab_bc_rl.models.state.mlp_state import MLPStateEncoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.mlp_state import MLPStateEncoder
         return MLPStateEncoder(input_dim=27, hidden_dims=[128, 128], output_dim=128)
 
     def test_forward(self, encoder):
@@ -310,7 +310,7 @@ class TestMLPStateEncoder:
 
     def test_linear_mode(self):
         """线性模式：hidden_dims=None → 单层 Linear。"""
-        from ur_mjlab_bc_rl.models.state.mlp_state import MLPStateEncoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.mlp_state import MLPStateEncoder
         encoder = MLPStateEncoder(
             input_dim=7, hidden_dims=None, output_dim=512, output_norm=True,
         )
@@ -322,7 +322,7 @@ class TestMLPStateEncoder:
 
     def test_factory_linear_mode(self):
         """通过工厂 — 无 hidden → 线性模式。"""
-        from ur_mjlab_bc_rl.models.state.encoder_factory import build_state_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.state_factory import build_state_encoder
         encoder = build_state_encoder({
             "input_dim": 7,
             "output": {"dim": 512, "layer_norm": True},
@@ -334,7 +334,7 @@ class TestMLPStateEncoder:
 
     def test_factory_mlp_mode(self):
         """通过工厂 — 有 hidden → MLP 模式。"""
-        from ur_mjlab_bc_rl.models.state.encoder_factory import build_state_encoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.state_factory import build_state_encoder
         encoder = build_state_encoder({
             "input_dim": 7,
             "hidden": {"dim": 128, "activation": "silu"},
@@ -351,7 +351,7 @@ class TestEmbeddingTaskEncoder:
 
     @pytest.fixture
     def encoder(self):
-        from ur_mjlab_bc_rl.models.task.embedding_task import EmbeddingTaskEncoder
+        from ur_mjlab_bc_rl.models.Test_Multimodal.embedding_task import EmbeddingTaskEncoder
         return EmbeddingTaskEncoder(num_tasks=3, embedding_dim=32, output_dim=64)
 
     def test_forward(self, encoder):
@@ -370,7 +370,7 @@ class TestFiLMFusion:
 
     @pytest.fixture
     def fusion(self):
-        from ur_mjlab_bc_rl.models.fusion.film import FiLMFusion
+        from ur_mjlab_bc_rl.models.Test_Multimodal.film import FiLMFusion
         return FiLMFusion(
             visual_dim=256,
             state_dim=128,
@@ -448,7 +448,7 @@ class TestUR5MultimodalActor:
 
     @pytest.fixture
     def actor(self, actor_cfg):
-        from ur_mjlab_bc_rl.models.policy.multimodal_backbone import UR5MultimodalBackbone
+        from ur_mjlab_bc_rl.models.Test_Multimodal.backbone import UR5MultimodalBackbone
         return UR5MultimodalBackbone(model_cfg=actor_cfg)
 
     def test_forward_inference(self, actor):

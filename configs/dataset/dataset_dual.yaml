@@ -68,8 +68,10 @@ state:
   #   #     - A__tcp
   #   #     - B__tcp
 
-  camera: # 相机： 涉及到渲染参数，定义到 configs/scenes/scene_dual.yaml 中
-    recode_scale: 1 # 多级嵌套则连乘
+
+  # 相机： 涉及到渲染参数，定义到 configs/scenes/scene_dual.yaml 中
+  # 相机固定按照 recode_hz 的频率记录
+  camera: 
     scene_config_file: configs/scenes/scene_dual.yaml # 包含相机参数的场景配置文件
     depth_range: [0.1, 2.0] # 深度范围 (米)
 

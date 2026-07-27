@@ -24,7 +24,7 @@ class TestCheckpointUtils:
     @pytest.fixture
     def test_ckpt_path(self, tmp_path):
         """创建测试 checkpoint。"""
-        from ur_mjlab_bc_rl.models.policy.multimodal_backbone import UR5MultimodalBackbone
+        from ur_mjlab_bc_rl.models.Test_Multimodal.backbone import UR5MultimodalBackbone
 
         actor = UR5MultimodalBackbone(model_cfg={
             "visual_encoder": {"type": "rescnn", "output_dim": 64},
@@ -67,7 +67,7 @@ class TestBCToPPO:
 
     @pytest.fixture
     def bc_ckpt(self, tmp_path):
-        from ur_mjlab_bc_rl.models.policy.multimodal_backbone import UR5MultimodalBackbone
+        from ur_mjlab_bc_rl.models.Test_Multimodal.backbone import UR5MultimodalBackbone
 
         actor = UR5MultimodalBackbone(model_cfg={
             "visual_encoder": {"type": "rescnn", "output_dim": 64},

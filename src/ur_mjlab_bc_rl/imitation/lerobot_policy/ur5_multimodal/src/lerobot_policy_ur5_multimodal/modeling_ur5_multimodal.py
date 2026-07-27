@@ -118,7 +118,7 @@ class UR5MultimodalPolicy(PreTrainedPolicy):
         self._loss_type = config.loss_type
 
         # 延迟导入：避免模块加载时触发 mjlab → matplotlib → numpy 链
-        from ur_mjlab_bc_rl.models.policy.multimodal_backbone import (
+        from ur_mjlab_bc_rl.models.Test_Multimodal.backbone import (
             UR5MultimodalBackbone,
         )
 
