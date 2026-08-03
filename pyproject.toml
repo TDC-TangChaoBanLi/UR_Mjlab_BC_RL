@@ -13,13 +13,17 @@ dependencies = [
     "numpy>=1.24.0",
     "scipy>=1.10.0",
     "mink>=1.1.1",
-    "lerobot>=0.6.0",
+    "lerobot[dataset,training]>=0.6.0",
+    "mujoco>=3.8.1",
 ]
 
 [project.scripts]
 ur-mjlab-bc-rl = "ur_mjlab_bc_rl:main"
 
 [project.entry-points."mjlab.tasks"]
+ur_mjlab_bc_rl = "ur_mjlab_bc_rl"
+
+[project.entry-points.lerobot]
 ur_mjlab_bc_rl = "ur_mjlab_bc_rl"
 
 [build-system]

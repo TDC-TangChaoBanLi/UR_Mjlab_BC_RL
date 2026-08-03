@@ -139,9 +139,15 @@ python scripts/train_ppo_finetune.py \
 
 ```bash
 # BC 策略评估
-python scripts/eval_policy.py --task pick_place \
-    --checkpoint outputs/checkpoints/pick_place/XXXXXX/best_actor.pt --episodes 20
+lerobot-eval \
+    --env.type=ur5e_dual \
+    --env.task=dual_pick_place \
+    --eval.n_episodes 1 --eval.batch_size 1 \
+    --policy.path=outputs/train/XXXXX/XXXXXX/checkpoints/last/pretrained_model.pt
+```
 
+
+```bash
 # PPO 策略交互（通过 MjLab） (尚未测试)
 mjlab play UR5-PickPlace \
     --checkpoint-file logs/rsl_rl/pick_place/model_0.pt \

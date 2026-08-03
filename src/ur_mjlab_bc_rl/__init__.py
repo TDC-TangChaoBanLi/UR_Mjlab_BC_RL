@@ -4,7 +4,17 @@
 - UR5-PickPlace (task 0)
 - UR5-PushT (task 1)
 - UR5-PegInSlot (task 2)
+
+LeRobot 插件注册（通过 entry points 自动发现）:
+- EnvConfig("ur5e_dual")
+- PreTrainedConfig("bimft")
 """
+
+# ── LeRobot 插件注册 ─────────────────────────────────
+# 导入 env 模块触发 @EnvConfig.register_subclass("ur5e_dual")
+from . import lerobot_env   # noqa: F401 — 注册 EnvConfig
+# 导入 policy 模块触发 @PreTrainedConfig.register_subclass("bimft")
+from . import lerobot_policy  # noqa: F401 — 注册 PreTrainedConfig
 
 try:
     from mjlab.tasks.registry import register_mjlab_task

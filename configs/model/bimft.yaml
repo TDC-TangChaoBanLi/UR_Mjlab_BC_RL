@@ -16,7 +16,7 @@
 # ── 输入维度 ─────────────────────────────────────────────
 input:
   image_channels: 4           # RGB(3) + Depth(1)
-  image_height: 460
+  image_height: 480
   image_width: 640
   vision_history: 4           # 4 帧，约 0.1s
   joint_high_rate: 3          # 每相机帧对应的关节采样数 R_q
@@ -66,7 +66,7 @@ bimanual:
 
 # ── 动作解码 ─────────────────────────────────────────────
 action:
-  chunk_size: 30              # 动作块长度 K
+  chunk_size: 90              # 动作块长度 K
   action_dim: 7               # 单臂动作维度 (6 joint + 1 gripper)
   decoder_layers: 4           # 解码器层数
   head_hidden_dim: 256        # 动作 MLP head 隐藏层维度

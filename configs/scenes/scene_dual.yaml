@@ -33,7 +33,7 @@ robot:
 # ── 相机 ──
 camera:
   - name: "global_realsense_link_CAMERA" # 相机 name ，与场景文件中的 camera name 一致
-    fps: 30                     # 相机帧率 (30 Hz)
+    fps: 30                     # 相机渲染帧率，控制仿环中的实际渲染频率
     image_size: [640, 480]      # 相机图像尺寸 (W, H)
     type: "rgb_depth"           # 相机类型， "gray" | "rgb" | "depth" | "rgb_depth"
   - name: "A_realsense_link_CAMERA"
